@@ -1,0 +1,23 @@
+import { NextRequest } from 'next/server';
+import { verifyCallback } from '@/services/payment-providers/liqpay';
+import { handlePaymentCallback } from '@/services/payment';
+
+export async function POST(request: NextRequest) {
+  try {
+    const formData = await request.formData();
+    const data = formData.get('data') as string;
+    const signature = formData.get('signature') as string;
+
+    if (!data || !signature) {
+      return new Response('Missing data or signature', { status: 400 });
+    }
+
+    const callbackResult = verifyCallback(data, signature);
+    await handlePaymentCallback('liqpay', callbackResult);
+
+    return new Response('OK', { status: 200 });
+  } catch (error) {
+    console.error('LiqPay webhook error:', error);
+    return new Response('Error', { status: 200 }); // Return 200 to prevent retries
+  }
+}

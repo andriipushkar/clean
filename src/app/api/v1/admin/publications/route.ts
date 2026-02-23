@@ -1,0 +1,31 @@
+import { NextRequest } from 'next/server';
+import { withRole } from '@/middleware/auth';
+import { createPublication, getPublications, PublicationError } from '@/services/publication';
+import { successResponse, paginatedResponse, errorResponse } from '@/utils/api-response';
+
+export const GET = withRole('admin', 'manager')(async (request: NextRequest) => {
+  try {
+    const params = Object.fromEntries(request.nextUrl.searchParams);
+    const { publications, total } = await getPublications({
+      page: Number(params.page) || 1,
+      limit: Number(params.limit) || 20,
+      status: params.status || undefined,
+    });
+    return paginatedResponse(publications, total, Number(params.page) || 1, Number(params.limit) || 20);
+  } catch {
+    return errorResponse('Внутрішня помилка сервера', 500);
+  }
+});
+
+export const POST = withRole('admin', 'manager')(async (request: NextRequest, { user }) => {
+  try {
+    const body = await request.json();
+    const pub = await createPublication(body, user.id);
+    return successResponse(pub, 201);
+  } catch (error) {
+    if (error instanceof PublicationError) {
+      return errorResponse(error.message, error.statusCode);
+    }
+    return errorResponse('Внутрішня помилка сервера', 500);
+  }
+});

@@ -1,0 +1,102 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { verifyAccessToken } from '@/services/token';
+import { isAccessTokenBlacklisted } from '@/services/auth';
+import { errorResponse } from '@/utils/api-response';
+import type { AuthUser } from '@/types/auth';
+
+interface AuthContext {
+  user: AuthUser;
+}
+
+type AuthHandler = (
+  request: NextRequest,
+  context: AuthContext & { params?: Promise<Record<string, string>> }
+) => Promise<NextResponse>;
+
+function extractBearerToken(request: NextRequest): string | null {
+  const header = request.headers.get('authorization');
+  if (!header?.startsWith('Bearer ')) return null;
+  return header.slice(7);
+}
+
+export function withAuth(handler: AuthHandler) {
+  return async (
+    request: NextRequest,
+    segmentData?: { params?: Promise<Record<string, string>> }
+  ): Promise<NextResponse> => {
+    const token = extractBearerToken(request);
+    if (!token) {
+      return errorResponse('Токен не надано', 401);
+    }
+
+    let payload;
+    try {
+      payload = verifyAccessToken(token);
+    } catch {
+      return errorResponse('Невалідний або прострочений токен', 401);
+    }
+
+    const blacklisted = await isAccessTokenBlacklisted(token);
+    if (blacklisted) {
+      return errorResponse('Токен відкликано', 401);
+    }
+
+    const user: AuthUser = {
+      id: payload.sub,
+      email: payload.email,
+      role: payload.role,
+    };
+
+    return handler(request, { user, params: segmentData?.params });
+  };
+}
+
+interface OptionalAuthContext {
+  user: AuthUser | null;
+}
+
+type OptionalAuthHandler = (
+  request: NextRequest,
+  context: OptionalAuthContext & { params?: Promise<Record<string, string>> }
+) => Promise<NextResponse>;
+
+export function withOptionalAuth(handler: OptionalAuthHandler) {
+  return async (
+    request: NextRequest,
+    segmentData?: { params?: Promise<Record<string, string>> }
+  ): Promise<NextResponse> => {
+    const token = extractBearerToken(request);
+    if (!token) {
+      return handler(request, { user: null, params: segmentData?.params });
+    }
+
+    try {
+      const payload = verifyAccessToken(token);
+      const blacklisted = await isAccessTokenBlacklisted(token);
+      if (blacklisted) {
+        return handler(request, { user: null, params: segmentData?.params });
+      }
+
+      const user: AuthUser = {
+        id: payload.sub,
+        email: payload.email,
+        role: payload.role,
+      };
+
+      return handler(request, { user, params: segmentData?.params });
+    } catch {
+      return handler(request, { user: null, params: segmentData?.params });
+    }
+  };
+}
+
+export function withRole(...roles: string[]) {
+  return (handler: AuthHandler) => {
+    return withAuth(async (request, context) => {
+      if (!roles.includes(context.user.role)) {
+        return errorResponse('Недостатньо прав', 403);
+      }
+      return handler(request, context);
+    });
+  };
+}

@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Offline — Clean Shop</title>
+  <style>
+    :root {
+      --color-primary: #78C4AA;
+      --color-primary-dark: #5BAF91;
+      --color-text: #1e293b;
+      --color-text-secondary: #64748b;
+      --color-bg: #ffffff;
+      --color-bg-secondary: #f7faf8;
+      --color-border: #e2e8f0;
+      --radius: 0.5rem;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--color-bg);
+      color: var(--color-text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .container {
+      text-align: center;
+      padding: 2rem;
+      max-width: 480px;
+    }
+    .icon {
+      width: 64px;
+      height: 64px;
+      margin: 0 auto 1.5rem;
+      color: var(--color-text-secondary);
+    }
+    h1 {
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+    }
+    p {
+      color: var(--color-text-secondary);
+      font-size: 0.875rem;
+      line-height: 1.5;
+      margin-bottom: 1.5rem;
+    }
+    .btn {
+      display: inline-block;
+      background: var(--color-primary);
+      color: white;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      border-radius: var(--radius);
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .btn:hover { background: var(--color-primary-dark); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <svg class="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 5.636a9 9 0 010 12.728M5.636 5.636a9 9 0 000 12.728M8.464 15.536a5 5 0 010-7.072M15.536 8.464a5 5 0 010 7.072M12 12h.01" />
+    </svg>
+    <h1>Немає зʼєднання</h1>
+    <p>Перевірте підключення до інтернету та спробуйте знову.</p>
+    <button class="btn" onclick="window.location.reload()">Спробувати знову</button>
+  </div>
+</body>
+</html>

@@ -1,0 +1,17 @@
+import { NextRequest } from 'next/server';
+import { withRole } from '@/middleware/auth';
+import { getOrderById } from '@/services/order';
+import { successResponse, errorResponse } from '@/utils/api-response';
+
+export const GET = withRole('admin', 'manager')(async (_request: NextRequest, { params }) => {
+  try {
+    const { id } = await params!;
+    const order = await getOrderById(Number(id));
+    if (!order) {
+      return errorResponse('Замовлення не знайдено', 404);
+    }
+    return successResponse(order);
+  } catch {
+    return errorResponse('Внутрішня помилка сервера', 500);
+  }
+});

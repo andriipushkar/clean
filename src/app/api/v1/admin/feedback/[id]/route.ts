@@ -1,0 +1,32 @@
+import { NextRequest } from 'next/server';
+import { withRole } from '@/middleware/auth';
+import { updateFeedbackStatusSchema } from '@/validators/feedback';
+import { updateFeedbackStatus, FeedbackError } from '@/services/feedback';
+import { successResponse, errorResponse } from '@/utils/api-response';
+
+export const PUT = withRole('admin', 'manager')(
+  async (request: NextRequest, { user, params }) => {
+    try {
+      const { id } = await params!;
+      const body = await request.json();
+      const parsed = updateFeedbackStatusSchema.safeParse(body);
+
+      if (!parsed.success) {
+        return errorResponse(parsed.error.issues[0].message, 422);
+      }
+
+      const feedback = await updateFeedbackStatus(
+        Number(id),
+        parsed.data.status,
+        user.id
+      );
+
+      return successResponse(feedback);
+    } catch (error) {
+      if (error instanceof FeedbackError) {
+        return errorResponse(error.message, error.statusCode);
+      }
+      return errorResponse('Внутрішня помилка сервера', 500);
+    }
+  }
+);

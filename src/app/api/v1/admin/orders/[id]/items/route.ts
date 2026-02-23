@@ -1,0 +1,33 @@
+import { NextRequest } from 'next/server';
+import { withRole } from '@/middleware/auth';
+import { editOrderItems, OrderError } from '@/services/order';
+import { successResponse, errorResponse } from '@/utils/api-response';
+import { z } from 'zod';
+
+const editItemsSchema = z.object({
+  items: z.array(z.object({
+    itemId: z.number().int().positive().optional(),
+    productId: z.number().int().positive().optional(),
+    quantity: z.number().int().min(0).default(1),
+    remove: z.boolean().optional(),
+  })).min(1, 'Потрібно вказати хоча б одну позицію'),
+});
+
+export const PUT = withRole('admin', 'manager')(async (request: NextRequest, { user, params }) => {
+  try {
+    const { id } = await params!;
+    const body = await request.json();
+    const parsed = editItemsSchema.safeParse(body);
+    if (!parsed.success) {
+      return errorResponse(parsed.error.issues[0].message, 400);
+    }
+
+    const order = await editOrderItems(Number(id), parsed.data.items, user.id);
+    return successResponse(order);
+  } catch (error) {
+    if (error instanceof OrderError) {
+      return errorResponse(error.message, error.statusCode);
+    }
+    return errorResponse('Внутрішня помилка сервера', 500);
+  }
+});

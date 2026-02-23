@@ -1,0 +1,147 @@
+import { prisma } from '@/lib/prisma';
+import { env } from '@/config/env';
+import type { PaymentProvider, PaymentInitResult, PaymentCallbackResult } from '@/types/payment';
+import * as liqpay from './payment-providers/liqpay';
+import * as monobank from './payment-providers/monobank';
+
+export class PaymentError extends Error {
+  constructor(
+    message: string,
+    public statusCode: number = 400
+  ) {
+    super(message);
+    this.name = 'PaymentError';
+  }
+}
+
+export async function initiatePayment(
+  orderId: number,
+  provider: PaymentProvider
+): Promise<PaymentInitResult> {
+  const order = await prisma.order.findUnique({
+    where: { id: orderId },
+    select: {
+      id: true,
+      orderNumber: true,
+      totalAmount: true,
+      paymentMethod: true,
+      paymentStatus: true,
+      payment: true,
+    },
+  });
+
+  if (!order) {
+    throw new PaymentError('Замовлення не знайдено', 404);
+  }
+
+  if (order.paymentMethod !== 'online') {
+    throw new PaymentError('Це замовлення не потребує онлайн-оплати', 400);
+  }
+
+  if (order.paymentStatus === 'paid') {
+    throw new PaymentError('Замовлення вже оплачено', 400);
+  }
+
+  const amount = Number(order.totalAmount);
+  const description = `Замовлення #${order.orderNumber}`;
+  const resultUrl = `${env.APP_URL}/checkout/payment-redirect?orderId=${orderId}`;
+
+  let result: PaymentInitResult;
+
+  if (provider === 'liqpay') {
+    const serverUrl = `${env.APP_URL}/api/webhooks/liqpay`;
+    result = await liqpay.createPayment(orderId, amount, description, resultUrl, serverUrl);
+  } else {
+    const webhookUrl = `${env.APP_URL}/api/webhooks/monobank`;
+    result = await monobank.createPayment(orderId, amount, description, resultUrl, webhookUrl);
+  }
+
+  // Create or update payment record
+  await prisma.payment.upsert({
+    where: { orderId },
+    update: {
+      paymentProvider: provider,
+      transactionId: result.paymentId || null,
+    },
+    create: {
+      orderId,
+      paymentMethod: 'online',
+      paymentStatus: 'pending',
+      amount,
+      paymentProvider: provider,
+      transactionId: result.paymentId || null,
+    },
+  });
+
+  return result;
+}
+
+export async function handlePaymentCallback(
+  provider: PaymentProvider,
+  callbackResult: PaymentCallbackResult
+): Promise<void> {
+  const { orderId, status, transactionId, rawData } = callbackResult;
+
+  const payment = await prisma.payment.findUnique({
+    where: { orderId },
+  });
+
+  if (!payment) {
+    // Create payment record if it doesn't exist
+    await prisma.payment.create({
+      data: {
+        orderId,
+        paymentMethod: 'online',
+        paymentStatus: status === 'success' ? 'paid' : 'pending',
+        amount: 0,
+        paymentProvider: provider,
+        transactionId,
+        callbackData: rawData,
+        paidAt: status === 'success' ? new Date() : null,
+      },
+    });
+  } else {
+    await prisma.payment.update({
+      where: { orderId },
+      data: {
+        paymentStatus: status === 'success' ? 'paid' : status === 'failure' ? 'pending' : 'pending',
+        transactionId,
+        callbackData: rawData,
+        paidAt: status === 'success' ? new Date() : payment.paidAt,
+      },
+    });
+  }
+
+  // Update order payment status
+  if (status === 'success') {
+    await prisma.order.update({
+      where: { id: orderId },
+      data: {
+        paymentStatus: 'paid',
+        statusHistory: {
+          create: {
+            oldStatus: null,
+            newStatus: 'paid',
+            changeSource: 'system',
+            comment: `Оплата підтверджена через ${provider}`,
+          },
+        },
+      },
+    });
+  }
+}
+
+export async function getPaymentStatus(orderId: number) {
+  const payment = await prisma.payment.findUnique({
+    where: { orderId },
+    select: {
+      paymentStatus: true,
+      paymentProvider: true,
+      transactionId: true,
+      amount: true,
+      paidAt: true,
+    },
+  });
+
+  return payment;
+}

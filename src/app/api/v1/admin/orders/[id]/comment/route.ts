@@ -13,6 +13,7 @@ export const PUT = withRole('admin', 'manager')(
     try {
       const { id } = await params!;
       const orderId = Number(id);
+      if (isNaN(orderId)) return errorResponse('Невалідний ID', 400);
 
       const body = await request.json();
       const parsed = commentSchema.safeParse(body);

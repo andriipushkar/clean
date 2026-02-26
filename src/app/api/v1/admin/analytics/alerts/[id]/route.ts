@@ -6,10 +6,12 @@ import { successResponse, errorResponse } from '@/utils/api-response';
 export const PUT = withRole('admin', 'manager')(async (request: NextRequest, { user, params }) => {
   try {
     const { id } = await params!;
+    const numId = Number(id);
+    if (isNaN(numId)) return errorResponse('Невалідний ID', 400);
     const body = await request.json();
 
     const alert = await prisma.analyticsAlert.findFirst({
-      where: { id: Number(id), createdBy: user.id },
+      where: { id: numId, createdBy: user.id },
     });
 
     if (!alert) {
@@ -17,7 +19,7 @@ export const PUT = withRole('admin', 'manager')(async (request: NextRequest, { u
     }
 
     const updated = await prisma.analyticsAlert.update({
-      where: { id: Number(id) },
+      where: { id: numId },
       data: {
         isActive: body.isActive ?? alert.isActive,
       },
@@ -32,16 +34,18 @@ export const PUT = withRole('admin', 'manager')(async (request: NextRequest, { u
 export const DELETE = withRole('admin', 'manager')(async (_request: NextRequest, { user, params }) => {
   try {
     const { id } = await params!;
+    const numId = Number(id);
+    if (isNaN(numId)) return errorResponse('Невалідний ID', 400);
 
     const alert = await prisma.analyticsAlert.findFirst({
-      where: { id: Number(id), createdBy: user.id },
+      where: { id: numId, createdBy: user.id },
     });
 
     if (!alert) {
       return errorResponse('Сповіщення не знайдено', 404);
     }
 
-    await prisma.analyticsAlert.delete({ where: { id: Number(id) } });
+    await prisma.analyticsAlert.delete({ where: { id: numId } });
 
     return successResponse({ deleted: true });
   } catch {

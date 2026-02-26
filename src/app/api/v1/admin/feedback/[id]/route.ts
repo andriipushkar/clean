@@ -8,6 +8,8 @@ export const PUT = withRole('admin', 'manager')(
   async (request: NextRequest, { user, params }) => {
     try {
       const { id } = await params!;
+      const numId = Number(id);
+      if (isNaN(numId)) return errorResponse('Невалідний ID', 400);
       const body = await request.json();
       const parsed = updateFeedbackStatusSchema.safeParse(body);
 
@@ -16,7 +18,7 @@ export const PUT = withRole('admin', 'manager')(
       }
 
       const feedback = await updateFeedbackStatus(
-        Number(id),
+        numId,
         parsed.data.status,
         user.id
       );

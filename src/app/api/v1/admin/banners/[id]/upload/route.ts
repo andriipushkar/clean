@@ -9,6 +9,8 @@ export const POST = withRole('admin', 'manager')(
   async (request: NextRequest, { params }) => {
     try {
       const { id } = await params!;
+      const numId = Number(id);
+      if (isNaN(numId)) return errorResponse('Невалідний ID', 400);
       const formData = await request.formData();
       const file = formData.get('image') as File | null;
 
@@ -37,7 +39,7 @@ export const POST = withRole('admin', 'manager')(
 
       const imageUrl = `/uploads/banners/${filename}`;
       const banner = await prisma.banner.update({
-        where: { id: Number(id) },
+        where: { id: numId },
         data: { imageDesktop: imageUrl },
       });
 

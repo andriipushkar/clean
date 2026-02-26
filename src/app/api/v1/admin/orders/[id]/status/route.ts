@@ -7,6 +7,8 @@ import { successResponse, errorResponse } from '@/utils/api-response';
 export const PUT = withRole('admin', 'manager')(async (request: NextRequest, { user, params }) => {
   try {
     const { id } = await params!;
+    const numId = Number(id);
+    if (isNaN(numId)) return errorResponse('Невалідний ID', 400);
     const body = await request.json();
     const parsed = updateOrderStatusSchema.safeParse(body);
     if (!parsed.success) {
@@ -14,7 +16,7 @@ export const PUT = withRole('admin', 'manager')(async (request: NextRequest, { u
     }
 
     const order = await updateOrderStatus(
-      Number(id),
+      numId,
       parsed.data.status,
       user.id,
       'manager',

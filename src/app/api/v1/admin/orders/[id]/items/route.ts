@@ -16,13 +16,15 @@ const editItemsSchema = z.object({
 export const PUT = withRole('admin', 'manager')(async (request: NextRequest, { user, params }) => {
   try {
     const { id } = await params!;
+    const numId = Number(id);
+    if (isNaN(numId)) return errorResponse('Невалідний ID', 400);
     const body = await request.json();
     const parsed = editItemsSchema.safeParse(body);
     if (!parsed.success) {
       return errorResponse(parsed.error.issues[0].message, 400);
     }
 
-    const order = await editOrderItems(Number(id), parsed.data.items, user.id);
+    const order = await editOrderItems(numId, parsed.data.items, user.id);
     return successResponse(order);
   } catch (error) {
     if (error instanceof OrderError) {

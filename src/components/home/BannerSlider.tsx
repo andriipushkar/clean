@@ -83,6 +83,7 @@ const fallbackBanners: Banner[] = [
 
 export default function BannerSlider() {
   const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true });
+  const [mobileRef, mobileApi] = useEmblaCarousel({ loop: true });
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [banners, setBanners] = useState<Banner[]>(fallbackBanners);
   const [isPaused, setIsPaused] = useState(false);
@@ -96,8 +97,14 @@ export default function BannerSlider() {
       .catch(() => {});
   }, []);
 
-  const scrollPrev = useCallback(() => emblaApi?.scrollPrev(), [emblaApi]);
-  const scrollNext = useCallback(() => emblaApi?.scrollNext(), [emblaApi]);
+  const scrollPrev = useCallback(() => {
+    emblaApi?.scrollPrev();
+    mobileApi?.scrollPrev();
+  }, [emblaApi, mobileApi]);
+  const scrollNext = useCallback(() => {
+    emblaApi?.scrollNext();
+    mobileApi?.scrollNext();
+  }, [emblaApi, mobileApi]);
 
   useEffect(() => {
     if (!emblaApi) return;
@@ -113,6 +120,20 @@ export default function BannerSlider() {
     };
   }, [emblaApi, isPaused]);
 
+  useEffect(() => {
+    if (!mobileApi) return;
+    const onSelect = () => setSelectedIndex(mobileApi.selectedScrollSnap());
+    mobileApi.on('select', onSelect);
+
+    const interval = setInterval(() => {
+      if (!isPaused) mobileApi.scrollNext();
+    }, 5000);
+    return () => {
+      clearInterval(interval);
+      mobileApi.off('select', onSelect);
+    };
+  }, [mobileApi, isPaused]);
+
   if (!banners.length) return null;
 
   return (
@@ -121,24 +142,19 @@ export default function BannerSlider() {
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
-      <div className="overflow-hidden" ref={emblaRef}>
+      {/* Desktop carousel */}
+      <div className="hidden overflow-hidden sm:block" ref={emblaRef}>
         <div className="flex">
           {banners.map((banner, idx) => (
             <div key={banner.id} className="min-w-0 shrink-0 basis-full">
               <Link href={banner.buttonLink || '/'} className="relative block">
-                <div className="relative aspect-[2/1] sm:aspect-[21/7]">
+                <div className="relative aspect-[21/7]">
                   {banner.imageDesktop ? (
-                    <picture>
-                      {banner.imageMobile && (
-                        <source media="(max-width: 639px)" srcSet={banner.imageMobile} />
-                      )}
-                      <source media="(min-width: 640px)" srcSet={banner.imageDesktop} />
-                      <img
-                        src={banner.imageDesktop}
-                        alt={banner.title || ''}
-                        className="absolute inset-0 h-full w-full object-cover"
-                      />
-                    </picture>
+                    <img
+                      src={banner.imageDesktop}
+                      alt={banner.title || ''}
+                      className="absolute inset-0 h-full w-full object-cover"
+                    />
                   ) : (
                     <div className={`absolute inset-0 bg-gradient-to-br ${bannerStyles[idx % bannerStyles.length]} overflow-hidden`}>
                       <BannerDecoration index={idx % 3} />
@@ -156,6 +172,46 @@ export default function BannerSlider() {
                       <span className="inline-flex items-center gap-2 rounded-full bg-white px-8 py-3.5 text-sm font-semibold text-[var(--color-primary-dark)] shadow-lg transition-all hover:shadow-xl hover:scale-[1.03] sm:text-base">
                         {banner.buttonText}
                         <svg className="h-4 w-4 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </Link>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Mobile carousel */}
+      <div className="overflow-hidden sm:hidden" ref={mobileRef}>
+        <div className="flex">
+          {banners.map((banner, idx) => (
+            <div key={banner.id} className="min-w-0 shrink-0 basis-full">
+              <Link href={banner.buttonLink || '/'} className="relative block">
+                <div className="relative aspect-[2/1]">
+                  {(banner.imageMobile || banner.imageDesktop) ? (
+                    <img
+                      src={banner.imageMobile || banner.imageDesktop}
+                      alt={banner.title || ''}
+                      className="absolute inset-0 h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className={`absolute inset-0 bg-gradient-to-br ${bannerStyles[idx % bannerStyles.length]} overflow-hidden`}>
+                      <BannerDecoration index={idx % 3} />
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-r from-black/30 via-transparent to-transparent" />
+                  <div className="absolute inset-0 flex flex-col items-start justify-center p-6 text-white">
+                    {banner.title && (
+                      <h2 className="mb-2 text-3xl font-extrabold leading-tight tracking-tight" style={{ textShadow: '0 2px 12px rgba(0,0,0,0.2)' }}>{highlightGold(banner.title)}</h2>
+                    )}
+                    {banner.subtitle && (
+                      <p className="mb-6 max-w-md text-base font-light opacity-90">{banner.subtitle}</p>
+                    )}
+                    {banner.buttonText && (
+                      <span className="inline-flex items-center gap-2 rounded-full bg-white px-8 py-3.5 text-sm font-semibold text-[var(--color-primary-dark)] shadow-lg transition-all hover:shadow-xl hover:scale-[1.03]">
+                        {banner.buttonText}
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>
                       </span>
                     )}
                   </div>
@@ -185,7 +241,7 @@ export default function BannerSlider() {
         {banners.map((_, i) => (
           <button
             key={i}
-            onClick={() => emblaApi?.scrollTo(i)}
+            onClick={() => { emblaApi?.scrollTo(i); mobileApi?.scrollTo(i); }}
             className={`rounded-full transition-all duration-300 ${
               i === selectedIndex ? 'h-2 w-8 bg-white' : 'h-2 w-2 bg-white/40'
             }`}

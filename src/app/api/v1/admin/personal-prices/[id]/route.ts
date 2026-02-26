@@ -8,8 +8,10 @@ import { prisma } from '@/lib/prisma';
 export const GET = withRole('admin', 'manager')(async (_request: NextRequest, { params }) => {
   try {
     const { id } = await params!;
+    const numId = parseInt(id, 10);
+    if (isNaN(numId)) return errorResponse('Невалідний ID', 400);
     const item = await prisma.personalPrice.findUnique({
-      where: { id: parseInt(id, 10) },
+      where: { id: numId },
       include: {
         user: { select: { id: true, fullName: true, email: true } },
         product: { select: { id: true, name: true, code: true } },
@@ -27,13 +29,15 @@ export const GET = withRole('admin', 'manager')(async (_request: NextRequest, { 
 export const PUT = withRole('admin', 'manager')(async (request: NextRequest, { params }) => {
   try {
     const { id } = await params!;
+    const numId = parseInt(id, 10);
+    if (isNaN(numId)) return errorResponse('Невалідний ID', 400);
     const body = await request.json();
     const parsed = updatePersonalPriceSchema.safeParse(body);
     if (!parsed.success) {
       return errorResponse(parsed.error.issues[0].message, 400);
     }
 
-    const item = await updatePersonalPrice(parseInt(id, 10), parsed.data);
+    const item = await updatePersonalPrice(numId, parsed.data);
     return successResponse(item);
   } catch (error) {
     if (error instanceof PersonalPriceError) {
@@ -46,7 +50,9 @@ export const PUT = withRole('admin', 'manager')(async (request: NextRequest, { p
 export const DELETE = withRole('admin', 'manager')(async (_request: NextRequest, { params }) => {
   try {
     const { id } = await params!;
-    await deletePersonalPrice(parseInt(id, 10));
+    const numId = parseInt(id, 10);
+    if (isNaN(numId)) return errorResponse('Невалідний ID', 400);
+    await deletePersonalPrice(numId);
     return successResponse({ deleted: true });
   } catch (error) {
     if (error instanceof PersonalPriceError) {

@@ -8,7 +8,9 @@ export const DELETE = withRole('manager', 'admin')(
   async (_request: NextRequest, { params }) => {
     try {
       const { imageId } = await params!;
-      await deleteProductImage(Number(imageId));
+      const numImageId = Number(imageId);
+      if (isNaN(numImageId)) return errorResponse('Невалідний ID', 400);
+      await deleteProductImage(numImageId);
       await cacheInvalidate('products:*');
       return successResponse({ message: 'Зображення видалено' });
     } catch (error) {

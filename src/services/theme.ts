@@ -141,16 +141,16 @@ export async function activateTheme(themeId: number) {
     throw new ThemeError('Тему не знайдено', 404);
   }
 
-  // Deactivate all themes
-  await prisma.theme.updateMany({
-    where: { isActive: true },
-    data: { isActive: false },
-  });
-
-  // Activate selected theme
-  return prisma.theme.update({
-    where: { id: themeId },
-    data: { isActive: true, activatedAt: new Date() },
+  // Atomically deactivate all and activate selected theme
+  return prisma.$transaction(async (tx) => {
+    await tx.theme.updateMany({
+      where: { isActive: true },
+      data: { isActive: false },
+    });
+    return tx.theme.update({
+      where: { id: themeId },
+      data: { isActive: true, activatedAt: new Date() },
+    });
   });
 }
 
@@ -214,6 +214,15 @@ export async function uploadTheme(buffer: Buffer, filename: string) {
 
   if (!fs.existsSync(themesDir)) {
     fs.mkdirSync(themesDir, { recursive: true });
+  }
+
+  // Validate all ZIP entries to prevent zip-slip path traversal
+  const resolvedThemesDir = path.resolve(themesDir);
+  for (const entry of entries) {
+    const entryPath = path.resolve(themesDir, entry.entryName);
+    if (!entryPath.startsWith(resolvedThemesDir + path.sep) && entryPath !== resolvedThemesDir) {
+      throw new ThemeError('ZIP-архів містить небезпечні шляхи', 400);
+    }
   }
   zip.extractAllTo(themesDir, true);
 

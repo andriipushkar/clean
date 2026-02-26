@@ -6,7 +6,9 @@ import { successResponse, errorResponse } from '@/utils/api-response';
 export const GET = withRole('admin', 'manager')(async (_request: NextRequest, { params }) => {
   try {
     const { id } = await params!;
-    const user = await getUserById(Number(id));
+    const numId = Number(id);
+    if (isNaN(numId)) return errorResponse('Невалідний ID', 400);
+    const user = await getUserById(numId);
     if (!user) {
       return errorResponse('Користувача не знайдено', 404);
     }
@@ -19,10 +21,12 @@ export const GET = withRole('admin', 'manager')(async (_request: NextRequest, { 
 export const PUT = withRole('admin')(async (request: NextRequest, { params }) => {
   try {
     const { id } = await params!;
+    const numId = Number(id);
+    if (isNaN(numId)) return errorResponse('Невалідний ID', 400);
     const body = await request.json();
 
     if (body.role) {
-      const user = await updateUserRole(Number(id), body.role);
+      const user = await updateUserRole(numId, body.role);
       return successResponse(user);
     }
 

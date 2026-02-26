@@ -7,10 +7,12 @@ export const PUT = withRole('admin', 'manager')(
   async (request: NextRequest, { params }) => {
     try {
       const { id } = await params!;
+      const numId = Number(id);
+      if (isNaN(numId)) return errorResponse('Невалідний ID', 400);
       const body = await request.json();
 
       const banner = await prisma.banner.update({
-        where: { id: Number(id) },
+        where: { id: numId },
         data: {
           ...(body.title !== undefined && { title: body.title }),
           ...(body.subtitle !== undefined && { subtitle: body.subtitle }),
@@ -33,7 +35,9 @@ export const DELETE = withRole('admin')(
   async (_request: NextRequest, { params }) => {
     try {
       const { id } = await params!;
-      await prisma.banner.delete({ where: { id: Number(id) } });
+      const numId = Number(id);
+      if (isNaN(numId)) return errorResponse('Невалідний ID', 400);
+      await prisma.banner.delete({ where: { id: numId } });
       return successResponse({ deleted: true });
     } catch {
       return errorResponse('Помилка видалення банера', 500);

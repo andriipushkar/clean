@@ -8,7 +8,9 @@ export const GET = withRole('manager', 'admin')(
   async (_request: NextRequest, { params }) => {
     try {
       const { id } = await params!;
-      const category = await getCategoryById(Number(id));
+      const numId = Number(id);
+      if (isNaN(numId)) return errorResponse('Невалідний ID', 400);
+      const category = await getCategoryById(numId);
 
       if (!category) {
         return errorResponse('Категорію не знайдено', 404);
@@ -25,6 +27,8 @@ export const PUT = withRole('manager', 'admin')(
   async (request: NextRequest, { params }) => {
     try {
       const { id } = await params!;
+      const numId = Number(id);
+      if (isNaN(numId)) return errorResponse('Невалідний ID', 400);
       const body = await request.json();
       const parsed = updateCategorySchema.safeParse(body);
 
@@ -33,7 +37,7 @@ export const PUT = withRole('manager', 'admin')(
         return errorResponse(firstError, 422);
       }
 
-      const category = await updateCategory(Number(id), parsed.data);
+      const category = await updateCategory(numId, parsed.data);
       return successResponse(category);
     } catch (error) {
       if (error instanceof CategoryError) {
@@ -48,7 +52,9 @@ export const DELETE = withRole('manager', 'admin')(
   async (_request: NextRequest, { params }) => {
     try {
       const { id } = await params!;
-      await deleteCategory(Number(id));
+      const numId = Number(id);
+      if (isNaN(numId)) return errorResponse('Невалідний ID', 400);
+      await deleteCategory(numId);
       return successResponse({ message: 'Категорію видалено' });
     } catch (error) {
       if (error instanceof CategoryError) {

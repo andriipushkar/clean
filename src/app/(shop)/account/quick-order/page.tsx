@@ -73,14 +73,6 @@ export default function QuickOrderPage() {
   const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  if (user?.role !== 'wholesaler' && user?.role !== 'admin') {
-    return (
-      <div className="py-8 text-center text-[var(--color-text-secondary)]">
-        Розділ доступний тільки для оптових клієнтів
-      </div>
-    );
-  }
-
   const processFile = useCallback(async (file: File) => {
     const ext = file.name.split('.').pop()?.toLowerCase();
     try {
@@ -102,6 +94,14 @@ export default function QuickOrderPage() {
       alert('Помилка при читанні файлу');
     }
   }, []);
+
+  if (user?.role !== 'wholesaler' && user?.role !== 'admin') {
+    return (
+      <div className="py-8 text-center text-[var(--color-text-secondary)]">
+        Розділ доступний тільки для оптових клієнтів
+      </div>
+    );
+  }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

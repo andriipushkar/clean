@@ -3,13 +3,23 @@ import { withAuth } from '@/middleware/auth';
 import { initiatePayment, PaymentError } from '@/services/payment';
 import { initiatePaymentSchema } from '@/validators/payment';
 import { successResponse, errorResponse } from '@/utils/api-response';
+import { prisma } from '@/lib/prisma';
 
-export const POST = withAuth(async (request: NextRequest, { params }) => {
+export const POST = withAuth(async (request: NextRequest, { user, params }) => {
   try {
     const { id } = await params!;
     const orderId = parseInt(id, 10);
     if (isNaN(orderId)) {
       return errorResponse('Invalid order ID', 400);
+    }
+
+    // Verify the authenticated user owns this order
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      select: { userId: true },
+    });
+    if (!order || order.userId !== user.id) {
+      return errorResponse('Замовлення не знайдено', 404);
     }
 
     const body = await request.json();

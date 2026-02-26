@@ -1,5 +1,6 @@
 import { Prisma } from '@/../generated/prisma';
 import { prisma } from '@/lib/prisma';
+import { randomBytes } from 'crypto';
 import type { CheckoutInput, OrderFilterInput } from '@/validators/order';
 
 export class OrderError extends Error {
@@ -30,9 +31,7 @@ const CLIENT_CANCELLABLE = ['new_order', 'processing'];
 function generateOrderNumber(): string {
   const date = new Date();
   const prefix = `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}`;
-  const random = Math.floor(Math.random() * 10000)
-    .toString()
-    .padStart(4, '0');
+  const random = randomBytes(4).toString('hex').toUpperCase();
   return `${prefix}-${random}`;
 }
 
@@ -354,8 +353,11 @@ export async function updateOrderStatus(
     );
   }
 
-  // Client can only cancel
+  // Client can only cancel their own orders
   if (changeSource === 'client_action') {
+    if (order.userId !== changedBy) {
+      throw new OrderError('Замовлення не знайдено', 404);
+    }
     if (newStatus !== 'cancelled' || !CLIENT_CANCELLABLE.includes(currentStatus)) {
       throw new OrderError('Ви можете скасувати замовлення лише в статусах "Нове" або "В обробці"', 403);
     }

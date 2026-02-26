@@ -40,8 +40,37 @@ const IMAGE_DOWNLOAD_TIMEOUT = 10_000; // 10 seconds
 const IMAGE_MAX_SIZE = 5 * 1024 * 1024; // 5MB
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
+/** Block internal/private network URLs to prevent SSRF */
+function isAllowedUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return false;
+    const hostname = parsed.hostname;
+    // Block localhost, private IPs, link-local, metadata endpoints
+    if (
+      hostname === 'localhost' ||
+      hostname === '127.0.0.1' ||
+      hostname === '::1' ||
+      hostname === '0.0.0.0' ||
+      hostname.startsWith('10.') ||
+      hostname.startsWith('172.') ||
+      hostname.startsWith('192.168.') ||
+      hostname.startsWith('169.254.') ||
+      hostname.endsWith('.local') ||
+      hostname.endsWith('.internal')
+    ) {
+      return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function downloadAndProcessImage(url: string, productId: number): Promise<boolean> {
   try {
+    if (!isAllowedUrl(url)) return false;
+
     const { processProductImage } = await import('./image');
 
     const controller = new AbortController();
@@ -49,6 +78,7 @@ async function downloadAndProcessImage(url: string, productId: number): Promise<
 
     const res = await fetch(url, {
       signal: controller.signal,
+      redirect: 'error', // prevent redirect-based SSRF bypasses
       headers: { 'User-Agent': 'CleanShop-Import/1.0' },
     });
     clearTimeout(timeout);

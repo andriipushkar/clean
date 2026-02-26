@@ -9,9 +9,10 @@ export const POST = withRole('manager', 'admin')(
     try {
       const { id } = await params!;
       const productId = Number(id);
+      if (isNaN(productId)) return errorResponse('Невалідний ID', 400);
 
       const formData = await request.formData();
-      const file = formData.get('image');
+      const file = formData.get('images');
       const isMain = formData.get('isMain') === 'true';
 
       if (!file || !(file instanceof File)) {

@@ -7,6 +7,8 @@ import { successResponse, errorResponse } from '@/utils/api-response';
 export const PUT = withAuth(async (request: NextRequest, { user, params }) => {
   try {
     const { id } = await params!;
+    const numId = Number(id);
+    if (isNaN(numId)) return errorResponse('Невалідний ID', 400);
     const body = await request.json();
 
     if (body.status !== 'cancelled') {
@@ -14,7 +16,7 @@ export const PUT = withAuth(async (request: NextRequest, { user, params }) => {
     }
 
     const order = await updateOrderStatus(
-      Number(id),
+      numId,
       'cancelled',
       user.id,
       'client_action',

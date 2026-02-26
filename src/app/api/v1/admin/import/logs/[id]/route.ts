@@ -7,7 +7,9 @@ export const GET = withRole('manager', 'admin')(
   async (_request: NextRequest, { params }) => {
     try {
       const { id } = await params!;
-      const log = await getImportLogById(Number(id));
+      const numId = Number(id);
+      if (isNaN(numId)) return errorResponse('Невалідний ID', 400);
+      const log = await getImportLogById(numId);
 
       if (!log) {
         return errorResponse('Лог імпорту не знайдено', 404);

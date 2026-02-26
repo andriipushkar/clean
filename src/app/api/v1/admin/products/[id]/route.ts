@@ -8,7 +8,9 @@ export const GET = withRole('manager', 'admin')(
   async (_request: NextRequest, { params }) => {
     try {
       const { id } = await params!;
-      const product = await getProductById(Number(id));
+      const numId = Number(id);
+      if (isNaN(numId)) return errorResponse('Невалідний ID', 400);
+      const product = await getProductById(numId);
 
       if (!product) {
         return errorResponse('Товар не знайдено', 404);
@@ -25,6 +27,8 @@ export const PUT = withRole('manager', 'admin')(
   async (request: NextRequest, { params }) => {
     try {
       const { id } = await params!;
+      const numId = Number(id);
+      if (isNaN(numId)) return errorResponse('Невалідний ID', 400);
       const body = await request.json();
       const parsed = updateProductSchema.safeParse(body);
 
@@ -33,7 +37,7 @@ export const PUT = withRole('manager', 'admin')(
         return errorResponse(firstError, 422);
       }
 
-      const product = await updateProduct(Number(id), parsed.data);
+      const product = await updateProduct(numId, parsed.data);
       return successResponse(product);
     } catch (error) {
       if (error instanceof ProductError) {
@@ -48,7 +52,9 @@ export const DELETE = withRole('manager', 'admin')(
   async (_request: NextRequest, { params }) => {
     try {
       const { id } = await params!;
-      await deleteProduct(Number(id));
+      const numId = Number(id);
+      if (isNaN(numId)) return errorResponse('Невалідний ID', 400);
+      await deleteProduct(numId);
       return successResponse({ message: 'Товар деактивовано' });
     } catch (error) {
       if (error instanceof ProductError) {

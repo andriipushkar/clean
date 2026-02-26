@@ -8,7 +8,9 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
-    await incrementFaqClick(Number(id));
+    const numId = Number(id);
+    if (isNaN(numId)) return errorResponse('Невалідний ID', 400);
+    await incrementFaqClick(numId);
     return successResponse({ message: 'ok' });
   } catch {
     return errorResponse('Внутрішня помилка сервера', 500);

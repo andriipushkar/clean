@@ -9,6 +9,7 @@ vi.mock('@/lib/prisma', () => ({
       updateMany: vi.fn(),
       update: vi.fn(),
     },
+    $transaction: vi.fn(),
   },
 }));
 
@@ -180,6 +181,8 @@ describe('activateTheme', () => {
     mockPrisma.theme.findUnique.mockResolvedValue(theme as never);
     mockPrisma.theme.updateMany.mockResolvedValue({ count: 1 } as never);
     mockPrisma.theme.update.mockResolvedValue(activatedTheme as never);
+    // $transaction executes the callback with the prisma client itself
+    mockPrisma.$transaction.mockImplementation((fn: (tx: unknown) => unknown) => fn(mockPrisma));
 
     const result = await activateTheme(2);
 

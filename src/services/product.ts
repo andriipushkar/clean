@@ -11,19 +11,70 @@ import { cacheGet, cacheSet, cacheInvalidate, CACHE_TTL } from '@/services/cache
  * 2. tsvector full-text search with ts_rank_cd
  * 3. Trigram similarity for fuzzy matching
  */
+interface SearchFilters {
+  category?: string;
+  priceMin?: number;
+  priceMax?: number;
+  promo?: boolean;
+  inStock?: boolean;
+}
+
+/**
+ * Build parameterized WHERE conditions for full-text search.
+ * All dynamic values are passed as numbered $N placeholders.
+ */
+function buildSearchConditions(
+  filters: SearchFilters,
+  startParam: number
+): { sql: string; params: unknown[] } {
+  const conditions: string[] = [];
+  const params: unknown[] = [];
+  let idx = startParam;
+
+  if (filters.category) {
+    conditions.push(`category_id IN (SELECT id FROM categories WHERE slug = $${idx})`);
+    params.push(filters.category);
+    idx++;
+  }
+  if (filters.priceMin !== undefined) {
+    conditions.push(`price_retail >= $${idx}`);
+    params.push(filters.priceMin);
+    idx++;
+  }
+  if (filters.priceMax !== undefined) {
+    conditions.push(`price_retail <= $${idx}`);
+    params.push(filters.priceMax);
+    idx++;
+  }
+  if (filters.promo) {
+    conditions.push(`is_promo = true`);
+  }
+  if (filters.inStock) {
+    conditions.push(`quantity > 0`);
+  }
+
+  return {
+    sql: conditions.length > 0 ? `AND ${conditions.join(' AND ')}` : '',
+    params,
+  };
+}
+
 async function fullTextSearchProductIds(
   query: string,
   limit: number,
   offset: number,
-  additionalWhere?: string
+  filters: SearchFilters
 ): Promise<{ ids: number[]; total: number }> {
-  const whereClause = additionalWhere ? `AND ${additionalWhere}` : '';
   const likePattern = `%${query}%`;
+
+  // Base search params: $1=likePattern, $2=query, $3=query
+  // Extra filter params start from $4
+  const { sql: filterSql, params: filterParams } = buildSearchConditions(filters, 4);
 
   const countSql = `
     SELECT COUNT(DISTINCT id)::bigint as count FROM (
       SELECT id FROM products
-      WHERE is_active = true ${whereClause}
+      WHERE is_active = true ${filterSql}
         AND (
           code ILIKE $1
           OR search_vector @@ plainto_tsquery('simple', $2)
@@ -33,12 +84,18 @@ async function fullTextSearchProductIds(
   `;
 
   const countResult = await prisma.$queryRawUnsafe<[{ count: bigint }]>(
-    countSql, likePattern, query, query
+    countSql, likePattern, query, query, ...filterParams
   );
 
   const total = Number(countResult[0]?.count ?? 0);
 
   if (total === 0) return { ids: [], total: 0 };
+
+  // Rank query: $1=like, $2=query, $3=query, $4=like, $5=query, $6=query
+  // Extra filter params start from $7
+  const { sql: rankFilterSql, params: rankFilterParams } = buildSearchConditions(filters, 7);
+  const limitIdx = 7 + rankFilterParams.length;
+  const offsetIdx = limitIdx + 1;
 
   const rankSql = `
     SELECT id,
@@ -47,18 +104,19 @@ async function fullTextSearchProductIds(
       + COALESCE(similarity(name, $3) * 5, 0)
       AS rank
     FROM products
-    WHERE is_active = true ${whereClause}
+    WHERE is_active = true ${rankFilterSql}
       AND (
         code ILIKE $4
         OR search_vector @@ plainto_tsquery('simple', $5)
         OR similarity(name, $6) > 0.2
       )
     ORDER BY rank DESC, orders_count DESC
-    LIMIT $7 OFFSET $8
+    LIMIT $${limitIdx} OFFSET $${offsetIdx}
   `;
 
   const results = await prisma.$queryRawUnsafe<{ id: number }[]>(
-    rankSql, likePattern, query, query, likePattern, query, query, limit, offset
+    rankSql, likePattern, query, query, likePattern, query, query,
+    ...rankFilterParams, limit, offset
   );
 
   return { ids: results.map((r) => r.id), total };
@@ -197,25 +255,13 @@ export async function getProducts(filters: ProductFilterInput) {
 
   // Use full-text search when search query is provided
   if (filters.search && filters.search.length >= 2) {
-    const extraConditions: string[] = [];
-    if (filters.category) {
-      extraConditions.push(`category_id IN (SELECT id FROM categories WHERE slug = '${filters.category.replace(/'/g, "''")}')`);
-    }
-    if (filters.priceMin !== undefined) {
-      extraConditions.push(`price_retail >= ${Number(filters.priceMin)}`);
-    }
-    if (filters.priceMax !== undefined) {
-      extraConditions.push(`price_retail <= ${Number(filters.priceMax)}`);
-    }
-    if (filters.promo) {
-      extraConditions.push(`is_promo = true`);
-    }
-    if (filters.inStock) {
-      extraConditions.push(`quantity > 0`);
-    }
-
-    const additionalWhere = extraConditions.length > 0 ? extraConditions.join(' AND ') : undefined;
-    const { ids, total } = await fullTextSearchProductIds(filters.search, filters.limit, skip, additionalWhere);
+    const { ids, total } = await fullTextSearchProductIds(filters.search, filters.limit, skip, {
+      category: filters.category,
+      priceMin: filters.priceMin,
+      priceMax: filters.priceMax,
+      promo: filters.promo,
+      inStock: filters.inStock,
+    });
 
     if (ids.length === 0) return { products: [], total: 0 };
 

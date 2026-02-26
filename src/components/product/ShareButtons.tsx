@@ -11,7 +11,7 @@ interface ShareButtonsProps {
 export default function ShareButtons({ url, title }: ShareButtonsProps) {
   const [copied, setCopied] = useState(false);
   const [igCopied, setIgCopied] = useState(false);
-  const [fullUrl, setFullUrl] = useState(url);
+  const [fullUrl, setFullUrl] = useState('');
 
   useEffect(() => {
     setFullUrl(`${window.location.origin}${url}`);
@@ -19,6 +19,8 @@ export default function ShareButtons({ url, title }: ShareButtonsProps) {
 
   const encodedUrl = encodeURIComponent(fullUrl);
   const encodedTitle = encodeURIComponent(title);
+
+  if (!fullUrl) return null;
 
   const handleCopy = async () => {
     try {

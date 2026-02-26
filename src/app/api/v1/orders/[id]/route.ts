@@ -6,7 +6,9 @@ import { successResponse, errorResponse } from '@/utils/api-response';
 export const GET = withAuth(async (_request: NextRequest, { user, params }) => {
   try {
     const { id } = await params!;
-    const order = await getOrderById(Number(id), user.id);
+    const numId = Number(id);
+    if (isNaN(numId)) return errorResponse('Невалідний ID', 400);
+    const order = await getOrderById(numId, user.id);
     if (!order) {
       return errorResponse('Замовлення не знайдено', 404);
     }

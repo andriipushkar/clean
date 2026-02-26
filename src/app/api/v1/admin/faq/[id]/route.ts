@@ -16,13 +16,15 @@ export const PUT = withRole('manager', 'admin')(
   async (request: NextRequest, { params }) => {
     try {
       const { id } = await params!;
+      const numId = Number(id);
+      if (isNaN(numId)) return errorResponse('Невалідний ID', 400);
       const body = await request.json();
       const parsed = updateSchema.safeParse(body);
       if (!parsed.success) {
         return errorResponse(parsed.error.issues[0]?.message || 'Невалідні дані', 422);
       }
 
-      const item = await updateFaqItem(Number(id), parsed.data);
+      const item = await updateFaqItem(numId, parsed.data);
       return successResponse(item);
     } catch (error) {
       if (error instanceof FaqError) return errorResponse(error.message, error.statusCode);
@@ -35,7 +37,9 @@ export const DELETE = withRole('manager', 'admin')(
   async (_request: NextRequest, { params }) => {
     try {
       const { id } = await params!;
-      await deleteFaqItem(Number(id));
+      const numId = Number(id);
+      if (isNaN(numId)) return errorResponse('Невалідний ID', 400);
+      await deleteFaqItem(numId);
       return successResponse({ message: 'Питання видалено' });
     } catch (error) {
       if (error instanceof FaqError) return errorResponse(error.message, error.statusCode);

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, type ReactNode } from 'react';
+import { useState, useRef, useEffect, type ReactNode } from 'react';
 
 interface AccordionItemProps {
   title: ReactNode;
@@ -10,7 +10,14 @@ interface AccordionItemProps {
 
 export function AccordionItem({ title, children, defaultOpen = false }: AccordionItemProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
+  const [scrollHeight, setScrollHeight] = useState<number | undefined>(undefined);
   const contentRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (isOpen && contentRef.current) {
+      setScrollHeight(contentRef.current.scrollHeight);
+    }
+  }, [isOpen, children]);
 
   return (
     <div className="border-b border-[var(--color-border)]">
@@ -34,7 +41,7 @@ export function AccordionItem({ title, children, defaultOpen = false }: Accordio
         ref={contentRef}
         className="overflow-hidden transition-[max-height] duration-200"
         style={{
-          maxHeight: isOpen ? contentRef.current?.scrollHeight ?? 'none' : 0,
+          maxHeight: isOpen ? (scrollHeight ?? 'none') : 0,
         }}
       >
         <div className="pb-4">{children}</div>

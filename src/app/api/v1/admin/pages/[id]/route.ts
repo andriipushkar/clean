@@ -18,13 +18,15 @@ export const PUT = withRole('manager', 'admin')(
   async (request: NextRequest, { user, params }) => {
     try {
       const { id } = await params!;
+      const numId = Number(id);
+      if (isNaN(numId)) return errorResponse('Невалідний ID', 400);
       const body = await request.json();
       const parsed = updateSchema.safeParse(body);
       if (!parsed.success) {
         return errorResponse(parsed.error.issues[0]?.message || 'Невалідні дані', 422);
       }
 
-      const page = await updatePage(Number(id), { ...parsed.data, updatedBy: user.id });
+      const page = await updatePage(numId, { ...parsed.data, updatedBy: user.id });
       return successResponse(page);
     } catch (error) {
       if (error instanceof StaticPageError) return errorResponse(error.message, error.statusCode);
@@ -37,7 +39,9 @@ export const DELETE = withRole('manager', 'admin')(
   async (_request: NextRequest, { params }) => {
     try {
       const { id } = await params!;
-      await deletePage(Number(id));
+      const numId = Number(id);
+      if (isNaN(numId)) return errorResponse('Невалідний ID', 400);
+      await deletePage(numId);
       return successResponse({ message: 'Сторінку видалено' });
     } catch (error) {
       if (error instanceof StaticPageError) return errorResponse(error.message, error.statusCode);

@@ -7,9 +7,11 @@ export const GET = withRole('admin', 'manager')(
   async (_request: NextRequest, { params }) => {
     try {
       const { id } = await params!;
+      const numId = Number(id);
+      if (isNaN(numId)) return errorResponse('Невалідний ID', 400);
 
       const rule = await prisma.moderationRule.findUnique({
-        where: { id: Number(id) },
+        where: { id: numId },
         include: {
           _count: { select: { logs: true } },
           logs: {
@@ -34,6 +36,8 @@ export const PUT = withRole('admin', 'manager')(
   async (request: NextRequest, { params }) => {
     try {
       const { id } = await params!;
+      const numId = Number(id);
+      if (isNaN(numId)) return errorResponse('Невалідний ID', 400);
       const body = await request.json();
 
       const validPlatforms = ['telegram', 'viber'];
@@ -51,7 +55,7 @@ export const PUT = withRole('admin', 'manager')(
       }
 
       const rule = await prisma.moderationRule.update({
-        where: { id: Number(id) },
+        where: { id: numId },
         data: {
           ...(body.platform && { platform: body.platform }),
           ...(body.ruleType && { ruleType: body.ruleType }),
@@ -72,7 +76,9 @@ export const DELETE = withRole('admin')(
   async (_request: NextRequest, { params }) => {
     try {
       const { id } = await params!;
-      await prisma.moderationRule.delete({ where: { id: Number(id) } });
+      const numId = Number(id);
+      if (isNaN(numId)) return errorResponse('Невалідний ID', 400);
+      await prisma.moderationRule.delete({ where: { id: numId } });
       return successResponse({ deleted: true });
     } catch {
       return errorResponse('Помилка видалення правила', 500);

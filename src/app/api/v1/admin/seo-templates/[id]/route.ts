@@ -7,8 +7,10 @@ export const PUT = withRole('admin')(
   async (request: NextRequest, { params }) => {
     try {
       const { id } = await params!;
+      const numId = Number(id);
+      if (isNaN(numId)) return errorResponse('Невалідний ID', 400);
       const body = await request.json();
-      const template = await updateSeoTemplate(Number(id), body);
+      const template = await updateSeoTemplate(numId, body);
       return successResponse(template);
     } catch (error) {
       if (error instanceof SeoTemplateError) {
@@ -23,7 +25,9 @@ export const DELETE = withRole('admin')(
   async (_request: NextRequest, { params }) => {
     try {
       const { id } = await params!;
-      await deleteSeoTemplate(Number(id));
+      const numId = Number(id);
+      if (isNaN(numId)) return errorResponse('Невалідний ID', 400);
+      await deleteSeoTemplate(numId);
       return successResponse({ deleted: true });
     } catch (error) {
       if (error instanceof SeoTemplateError) {

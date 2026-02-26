@@ -1,7 +1,16 @@
 import { prisma } from '@/lib/prisma';
-import { randomBytes } from 'crypto';
+import { randomBytes, createHmac } from 'crypto';
 import { sendEmail } from './email';
 import { env } from '@/config/env';
+
+/**
+ * Generate a deterministic unsubscribe token from an email address.
+ * Uses HMAC-SHA256 so the token cannot be forged without the secret.
+ */
+export function generateUnsubscribeToken(email: string): string {
+  const secret = env.APP_URL || 'clean-shop-unsubscribe';
+  return createHmac('sha256', secret).update(email.toLowerCase()).digest('hex');
+}
 
 export class SubscriberError extends Error {
   constructor(
@@ -70,12 +79,17 @@ export async function confirmSubscription(token: string) {
 }
 
 export async function unsubscribe(token: string) {
-  const subscriber = await prisma.subscriber.findFirst({
-    where: { confirmationToken: token, status: 'confirmed' },
+  // Token is an HMAC-SHA256 hash derived from the subscriber's email.
+  // Check all confirmed/pending subscribers to find a match.
+  const subscribers = await prisma.subscriber.findMany({
+    where: { status: { in: ['confirmed', 'pending_sub'] } },
   });
 
+  const subscriber = subscribers.find(
+    (s) => generateUnsubscribeToken(s.email) === token
+  );
+
   if (!subscriber) {
-    // Try by email from token (unsubscribe links may use email)
     throw new SubscriberError('Підписку не знайдено', 404);
   }
 

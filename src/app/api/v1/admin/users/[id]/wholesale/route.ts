@@ -6,15 +6,17 @@ import { successResponse, errorResponse } from '@/utils/api-response';
 export const PUT = withRole('admin', 'manager')(async (request: NextRequest, { user, params }) => {
   try {
     const { id } = await params!;
+    const numId = Number(id);
+    if (isNaN(numId)) return errorResponse('Невалідний ID', 400);
     const body = await request.json();
 
     if (body.action === 'approve') {
-      const result = await approveWholesale(Number(id), user.id);
+      const result = await approveWholesale(numId, user.id);
       return successResponse(result);
     }
 
     if (body.action === 'reject') {
-      const result = await rejectWholesale(Number(id));
+      const result = await rejectWholesale(numId);
       return successResponse(result);
     }
 

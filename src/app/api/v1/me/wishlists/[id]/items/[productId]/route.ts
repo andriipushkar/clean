@@ -6,7 +6,10 @@ import { successResponse, errorResponse } from '@/utils/api-response';
 export const DELETE = withAuth(async (_request: NextRequest, { user, params }) => {
   try {
     const { id, productId } = await params!;
-    await removeItemFromWishlist(user.id, Number(id), Number(productId));
+    const numId = Number(id);
+    const numProductId = Number(productId);
+    if (isNaN(numId) || isNaN(numProductId)) return errorResponse('Невалідний ID', 400);
+    await removeItemFromWishlist(user.id, numId, numProductId);
     return successResponse({ message: 'Товар видалено зі списку' });
   } catch (error) {
     if (error instanceof WishlistError) return errorResponse(error.message, error.statusCode);

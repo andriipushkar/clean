@@ -15,35 +15,42 @@ interface Banner {
   buttonText: string | null;
 }
 
-const bannerGradients = [
-  'from-[#2E7D32] via-[#388E3C] to-[#1B5E20]',
-  'from-[#1565C0] via-[#1976D2] to-[#6A1B9A]',
-  'from-[#E65100] via-[#F57C00] to-[#C62828]',
+const bannerStyles = [
+  'from-[#0D47A1] via-[#1565C0] to-[#1E88E5]',
+  'from-[#1565C0] via-[#1976D2] to-[#0D47A1]',
+  'from-[#0D47A1] via-[#1E88E5] to-[#1565C0]',
 ];
 
 function BannerDecoration({ index }: { index: number }) {
   if (index === 0)
     return (
       <>
-        <svg className="absolute -right-10 -top-10 h-64 w-64 opacity-10" viewBox="0 0 200 200"><circle cx="100" cy="100" r="100" fill="white" /></svg>
-        <svg className="absolute -bottom-16 -right-16 h-80 w-80 opacity-[0.07]" viewBox="0 0 200 200"><circle cx="100" cy="100" r="100" fill="white" /></svg>
-        <svg className="absolute left-1/3 top-0 h-40 w-40 opacity-[0.06]" viewBox="0 0 200 200"><circle cx="100" cy="100" r="80" fill="white" /></svg>
+        <svg className="absolute -right-20 -top-20 h-96 w-96 opacity-[0.06]" viewBox="0 0 200 200"><circle cx="100" cy="100" r="100" fill="white" /></svg>
+        <svg className="absolute -bottom-24 -left-10 h-80 w-80 opacity-[0.04]" viewBox="0 0 200 200"><circle cx="100" cy="100" r="100" fill="white" /></svg>
       </>
     );
   if (index === 1)
     return (
       <>
-        <svg className="absolute -left-20 bottom-0 h-72 w-72 opacity-10" viewBox="0 0 200 200"><circle cx="100" cy="100" r="100" fill="white" /></svg>
-        <svg className="absolute right-10 top-4 h-48 w-48 opacity-[0.06]" viewBox="0 0 200 200"><rect x="20" y="20" width="160" height="160" rx="40" fill="white" /></svg>
-        <svg className="absolute bottom-0 left-0 right-0 h-16 opacity-[0.08]" viewBox="0 0 1200 80" preserveAspectRatio="none"><path d="M0 40 Q300 0 600 40 T1200 40 V80 H0Z" fill="white" /></svg>
+        <svg className="absolute -right-10 bottom-0 h-72 w-72 opacity-[0.05]" viewBox="0 0 200 200"><rect x="10" y="10" width="180" height="180" rx="50" fill="white" /></svg>
+        <svg className="absolute -left-16 -top-16 h-64 w-64 opacity-[0.04]" viewBox="0 0 200 200"><circle cx="100" cy="100" r="100" fill="white" /></svg>
       </>
     );
   return (
     <>
-      <svg className="absolute -right-10 top-10 h-56 w-56 opacity-10" viewBox="0 0 200 200"><polygon points="100,10 190,190 10,190" fill="white" /></svg>
-      <svg className="absolute -bottom-10 -left-10 h-64 w-64 opacity-[0.07]" viewBox="0 0 200 200"><circle cx="100" cy="100" r="100" fill="white" /></svg>
-      <svg className="absolute top-0 left-0 right-0 h-12 opacity-[0.08]" viewBox="0 0 1200 60" preserveAspectRatio="none"><path d="M0 30 Q300 60 600 30 T1200 30 V0 H0Z" fill="white" /></svg>
+      <svg className="absolute -bottom-10 right-20 h-80 w-80 opacity-[0.05]" viewBox="0 0 200 200"><circle cx="100" cy="100" r="100" fill="white" /></svg>
+      <svg className="absolute -top-10 -left-10 h-56 w-56 opacity-[0.04]" viewBox="0 0 200 200"><rect x="20" y="20" width="160" height="160" rx="80" fill="white" /></svg>
     </>
+  );
+}
+
+function highlightGold(text: string) {
+  const parts = text.split(/(-?\d+%?|₴|\d[\d\s]*₴)/g);
+  if (parts.length === 1) return text;
+  return parts.map((part, i) =>
+    /\d|₴/.test(part) ? (
+      <span key={i} className="bg-gradient-to-r from-[#FFD54F] via-[#FFECB3] to-[#FFD54F] bg-clip-text text-transparent drop-shadow-[0_1px_2px_rgba(255,193,7,0.4)]">{part}</span>
+    ) : part
   );
 }
 
@@ -110,7 +117,7 @@ export default function BannerSlider() {
 
   return (
     <section
-      className="relative overflow-hidden rounded-lg"
+      className="relative overflow-hidden rounded-xl"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
@@ -133,22 +140,22 @@ export default function BannerSlider() {
                       />
                     </picture>
                   ) : (
-                    <div className={`absolute inset-0 bg-gradient-to-br ${bannerGradients[idx % bannerGradients.length]} overflow-hidden`}>
+                    <div className={`absolute inset-0 bg-gradient-to-br ${bannerStyles[idx % bannerStyles.length]} overflow-hidden`}>
                       <BannerDecoration index={idx % 3} />
                     </div>
                   )}
-                  <div className="absolute inset-0 bg-gradient-to-r from-black/40 to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-black/30 via-transparent to-transparent" />
                   <div className="absolute inset-0 flex flex-col items-start justify-center p-6 text-white sm:p-12 lg:p-16">
                     {banner.title && (
-                      <h2 className="mb-2 text-3xl font-extrabold leading-tight sm:text-5xl lg:text-6xl" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>{banner.title}</h2>
+                      <h2 className="mb-2 text-3xl font-extrabold leading-tight tracking-tight sm:text-5xl lg:text-6xl" style={{ textShadow: '0 2px 12px rgba(0,0,0,0.2)' }}>{highlightGold(banner.title)}</h2>
                     )}
                     {banner.subtitle && (
-                      <p className="mb-6 max-w-md text-base sm:text-xl" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.2)' }}>{banner.subtitle}</p>
+                      <p className="mb-6 max-w-md text-base font-light opacity-90 sm:text-xl">{banner.subtitle}</p>
                     )}
                     {banner.buttonText && (
-                      <span className="inline-flex items-center gap-2 rounded-[var(--radius)] bg-white px-8 py-3.5 text-base font-bold text-[var(--color-primary-dark)] shadow-lg transition-all hover:shadow-xl hover:scale-105">
+                      <span className="inline-flex items-center gap-2 rounded-full bg-white px-8 py-3.5 text-sm font-semibold text-[var(--color-primary-dark)] shadow-lg transition-all hover:shadow-xl hover:scale-[1.03] sm:text-base">
                         {banner.buttonText}
-                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>
+                        <svg className="h-4 w-4 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>
                       </span>
                     )}
                   </div>
@@ -161,14 +168,14 @@ export default function BannerSlider() {
 
       <button
         onClick={scrollPrev}
-        className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-2.5 shadow-md transition-all hover:bg-white hover:shadow-lg"
+        className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/80 p-2 shadow-md backdrop-blur-sm transition-all hover:bg-white hover:shadow-lg sm:left-4 sm:p-2.5"
         aria-label="Попередній"
       >
         <ChevronLeft size={20} className="text-[var(--color-text)]" />
       </button>
       <button
         onClick={scrollNext}
-        className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-2.5 shadow-md transition-all hover:bg-white hover:shadow-lg"
+        className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/80 p-2 shadow-md backdrop-blur-sm transition-all hover:bg-white hover:shadow-lg sm:right-4 sm:p-2.5"
         aria-label="Наступний"
       >
         <ChevronRight size={20} className="text-[var(--color-text)]" />
@@ -179,8 +186,8 @@ export default function BannerSlider() {
           <button
             key={i}
             onClick={() => emblaApi?.scrollTo(i)}
-            className={`rounded-full transition-all ${
-              i === selectedIndex ? 'h-2.5 w-6 bg-white' : 'h-2.5 w-2.5 bg-white/50'
+            className={`rounded-full transition-all duration-300 ${
+              i === selectedIndex ? 'h-2 w-8 bg-white' : 'h-2 w-2 bg-white/40'
             }`}
             aria-label={`Слайд ${i + 1}`}
           />

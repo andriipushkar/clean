@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type { MockPrismaClient } from '@/test/prisma-mock';
 
 vi.mock('@/lib/prisma', () => ({
   prisma: {
@@ -55,7 +56,7 @@ import {
   generateCommercialOfferPdf,
 } from './pdf';
 
-const mockPrisma = vi.mocked(prisma);
+const mockPrisma = prisma as unknown as MockPrismaClient;
 
 beforeEach(() => {
   vi.clearAllMocks();

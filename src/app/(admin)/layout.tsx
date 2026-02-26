@@ -6,6 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import Spinner from '@/components/ui/Spinner';
 import { useState, type ReactNode } from 'react';
 import { Menu, Close } from '@/components/icons';
+import AuthProvider from '@/providers/AuthProvider';
 
 const NAV_SECTIONS = [
   {
@@ -58,6 +59,14 @@ const NAV_SECTIONS = [
 ];
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
+  return (
+    <AuthProvider>
+      <AdminLayoutInner>{children}</AdminLayoutInner>
+    </AuthProvider>
+  );
+}
+
+function AdminLayoutInner({ children }: { children: ReactNode }) {
   const { user, isLoading, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
@@ -72,8 +81,17 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   }
 
   if (!user || (user.role !== 'admin' && user.role !== 'manager')) {
-    router.push('/auth/login');
-    return null;
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 p-8 text-center">
+        <h1 className="text-2xl font-bold">Доступ до адмін-панелі</h1>
+        <p className="text-[var(--color-text-secondary)]">
+          {user ? `Ви увійшли як ${user.email} (роль: ${user.role}). Потрібна роль admin або manager.` : 'Ви не авторизовані.'}
+        </p>
+        <a href="/auth/login" className="rounded-[var(--radius)] bg-[var(--color-primary)] px-6 py-2.5 font-medium text-white">
+          Увійти як адмін
+        </a>
+      </div>
+    );
   }
 
   const isActive = (href: string, exact?: boolean) =>

@@ -32,7 +32,8 @@ describe('GET /api/v1/admin/dashboard/stats', () => {
     };
     mockGetDashboardStats.mockResolvedValue(mockStats);
 
-    const res = await GET();
+    const req = new Request('http://localhost/api/v1/admin/dashboard/stats');
+    const res = await GET(req as never);
     const body = await res.json();
 
     expect(res.status).toBe(200);
@@ -44,7 +45,8 @@ describe('GET /api/v1/admin/dashboard/stats', () => {
   it('should return 500 on error', async () => {
     mockGetDashboardStats.mockRejectedValue(new Error('DB error'));
 
-    const res = await GET();
+    const req = new Request('http://localhost/api/v1/admin/dashboard/stats');
+    const res = await GET(req as never);
     const body = await res.json();
 
     expect(res.status).toBe(500);

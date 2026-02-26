@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { apiClient } from '@/lib/api-client';
+import { apiClient, getAccessToken } from '@/lib/api-client';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Spinner from '@/components/ui/Spinner';
@@ -119,11 +119,15 @@ export default function AdminProductDetailPage() {
     }
 
     try {
+      const headers: Record<string, string> = { 'X-Requested-With': 'XMLHttpRequest' };
+      const token = getAccessToken();
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       const res = await fetch(`/api/v1/admin/products/${id}/images`, {
         method: 'POST',
         body: formData,
         credentials: 'include',
-        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        headers,
       });
       const data = await res.json();
       if (data.success) {

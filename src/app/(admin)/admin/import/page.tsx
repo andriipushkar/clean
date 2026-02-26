@@ -1,24 +1,27 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { apiClient } from '@/lib/api-client';
+import { apiClient, getAccessToken } from '@/lib/api-client';
 import Button from '@/components/ui/Button';
 import Spinner from '@/components/ui/Spinner';
 
 interface ImportLog {
   id: number;
-  fileName: string;
+  filename: string;
   totalRows: number;
-  successRows: number;
-  errorRows: number;
+  createdCount: number;
+  updatedCount: number;
+  skippedCount: number;
+  errorCount: number;
   status: string;
-  createdAt: string;
+  startedAt: string;
 }
 
 interface ImportPreview {
   headers: string[];
   rows: string[][];
   totalRows: number;
+  format: 'standard' | 'supplier';
 }
 
 export default function AdminImportPage() {
@@ -58,11 +61,15 @@ export default function AdminImportPage() {
     formData.append('file', file);
 
     try {
+      const headers: Record<string, string> = { 'X-Requested-With': 'XMLHttpRequest' };
+      const token = getAccessToken();
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       const res = await fetch('/api/v1/admin/import/preview', {
         method: 'POST',
         body: formData,
         credentials: 'include',
-        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        headers,
       });
       const data = await res.json();
       if (data.success && data.data) {
@@ -89,7 +96,7 @@ export default function AdminImportPage() {
       // Simulate progress with XHR for progress tracking
       const xhr = new XMLHttpRequest();
 
-      const uploadPromise = new Promise<{ success: boolean; data?: { successRows?: number }; error?: string }>((resolve, reject) => {
+      const uploadPromise = new Promise<{ success: boolean; data?: { created?: number; updated?: number; skipped?: number }; error?: string }>((resolve, reject) => {
         xhr.upload.addEventListener('progress', (e) => {
           if (e.lengthComputable) {
             setUploadProgress(Math.round((e.loaded / e.total) * 50)); // First 50% is upload
@@ -108,6 +115,9 @@ export default function AdminImportPage() {
         xhr.addEventListener('error', () => reject(new Error('Upload failed')));
         xhr.open('POST', '/api/v1/admin/import/products');
         xhr.withCredentials = true;
+        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+        const uploadToken = getAccessToken();
+        if (uploadToken) xhr.setRequestHeader('Authorization', `Bearer ${uploadToken}`);
         xhr.send(formData);
       });
 
@@ -121,7 +131,9 @@ export default function AdminImportPage() {
       setUploadProgress(100);
 
       if (data.success) {
-        setUploadMessage({ type: 'success', text: `Імпорт завершено: ${data.data?.successRows || 0} товарів оброблено` });
+        const d = data.data;
+        const summary = d ? `створено: ${d.created ?? 0}, оновлено: ${d.updated ?? 0}, пропущено: ${d.skipped ?? 0}` : '0 товарів';
+        setUploadMessage({ type: 'success', text: `Імпорт завершено — ${summary}` });
         setPreview(null);
         setPreviewFile(null);
         loadLogs();
@@ -152,11 +164,15 @@ export default function AdminImportPage() {
         setUploadProgress((prev) => Math.min(prev + 3, 90));
       }, 300);
 
+      const imgHeaders: Record<string, string> = { 'X-Requested-With': 'XMLHttpRequest' };
+      const imgToken = getAccessToken();
+      if (imgToken) imgHeaders['Authorization'] = `Bearer ${imgToken}`;
+
       const res = await fetch('/api/v1/admin/import/images', {
         method: 'POST',
         body: formData,
         credentials: 'include',
-        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        headers: imgHeaders,
       });
       clearInterval(progressInterval);
       setUploadProgress(100);
@@ -191,15 +207,15 @@ export default function AdminImportPage() {
       {/* Upload section */}
       <div className="mb-6 grid gap-4 sm:grid-cols-2">
         <div className="rounded-[var(--radius)] border border-[var(--color-border)] bg-[var(--color-bg)] p-6">
-          <h3 className="mb-3 text-sm font-semibold">Завантажити Excel-файл</h3>
+          <h3 className="mb-3 text-sm font-semibold">Завантажити прайс-лист</h3>
           <p className="mb-4 text-sm text-[var(--color-text-secondary)]">
-            Підтримуються файли .xlsx та .xls з колонками: код, назва, категорія, ціна роздріб, ціна опт, кількість.
+            Підтримуються файли .xlsx, .xls та .csv. Стандартний формат: код, назва, категорія, ціна роздріб, ціна опт. Також підтримується формат постачальника (без коду) — категорії визначаються автоматично з рядків-роздільників.
           </p>
           <label className="inline-block">
             <input
               ref={fileInputRef}
               type="file"
-              accept=".xlsx,.xls"
+              accept=".xlsx,.xls,.csv"
               onChange={handleFileSelect}
               disabled={isUploading}
               className="hidden"
@@ -211,20 +227,20 @@ export default function AdminImportPage() {
         </div>
 
         <div className="rounded-[var(--radius)] border border-[var(--color-border)] bg-[var(--color-bg)] p-6">
-          <h3 className="mb-3 text-sm font-semibold">Завантажити зображення (ZIP)</h3>
+          <h3 className="mb-3 text-sm font-semibold">Завантажити зображення</h3>
           <p className="mb-4 text-sm text-[var(--color-text-secondary)]">
-            ZIP-архів із зображеннями. Назви файлів мають відповідати кодам товарів (наприклад: ABC123.jpg).
+            Одне зображення або ZIP-архів. Назва файлу = код товару (наприклад: ABC123.jpg).
           </p>
           <label className="inline-block">
             <input
               type="file"
-              accept=".zip"
+              accept=".zip,.jpg,.jpeg,.png,.webp"
               onChange={handleImageZipUpload}
               disabled={isUploading}
               className="hidden"
             />
             <span className="inline-flex cursor-pointer items-center gap-2 rounded-[var(--radius)] border border-[var(--color-border)] px-4 py-2 text-sm font-medium transition-colors hover:bg-[var(--color-bg-secondary)]">
-              Обрати ZIP
+              Обрати файл
             </span>
           </label>
         </div>
@@ -260,6 +276,7 @@ export default function AdminImportPage() {
               <h3 className="text-sm font-semibold">Попередній перегляд</h3>
               <p className="text-xs text-[var(--color-text-secondary)]">
                 {previewFile?.name} — {preview.totalRows} рядків
+                {preview.format === 'supplier' && ' (формат постачальника — категорії з рядків-роздільників)'}
               </p>
             </div>
             <div className="flex gap-2">
@@ -305,7 +322,8 @@ export default function AdminImportPage() {
               <tr className="border-b border-[var(--color-border)] bg-[var(--color-bg-secondary)]">
                 <th className="px-4 py-3 text-left font-medium">Файл</th>
                 <th className="px-4 py-3 text-center font-medium">Рядків</th>
-                <th className="px-4 py-3 text-center font-medium">Успішно</th>
+                <th className="px-4 py-3 text-center font-medium">Створено</th>
+                <th className="px-4 py-3 text-center font-medium">Оновлено</th>
                 <th className="px-4 py-3 text-center font-medium">Помилки</th>
                 <th className="px-4 py-3 text-center font-medium">Статус</th>
                 <th className="px-4 py-3 text-left font-medium">Дата</th>
@@ -314,25 +332,26 @@ export default function AdminImportPage() {
             <tbody>
               {logs.map((log) => (
                 <tr key={log.id} className="border-b border-[var(--color-border)] last:border-0">
-                  <td className="px-4 py-3">{log.fileName}</td>
-                  <td className="px-4 py-3 text-center">{log.totalRows}</td>
-                  <td className="px-4 py-3 text-center text-green-600">{log.successRows}</td>
-                  <td className="px-4 py-3 text-center text-[var(--color-danger)]">{log.errorRows}</td>
+                  <td className="px-4 py-3">{log.filename}</td>
+                  <td className="px-4 py-3 text-center">{log.totalRows ?? '—'}</td>
+                  <td className="px-4 py-3 text-center text-green-600">{log.createdCount ?? 0}</td>
+                  <td className="px-4 py-3 text-center text-blue-600">{log.updatedCount ?? 0}</td>
+                  <td className="px-4 py-3 text-center text-[var(--color-danger)]">{log.errorCount ?? 0}</td>
                   <td className="px-4 py-3 text-center">
                     <span className={`rounded-full px-2 py-0.5 text-xs ${
-                      log.status === 'completed' ? 'bg-green-100 text-green-700' :
-                      log.status === 'failed' ? 'bg-red-100 text-red-700' :
+                      log.status.startsWith('completed') ? 'bg-green-100 text-green-700' :
+                      log.status.startsWith('failed') ? 'bg-red-100 text-red-700' :
                       'bg-yellow-100 text-yellow-700'
                     }`}>
-                      {log.status === 'completed' ? 'Завершено' : log.status === 'failed' ? 'Помилка' : 'В процесі'}
+                      {log.status.startsWith('completed') ? 'Завершено' : log.status.startsWith('failed') ? 'Помилка' : 'В процесі'}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-[var(--color-text-secondary)]">{formatDate(log.createdAt)}</td>
+                  <td className="px-4 py-3 text-[var(--color-text-secondary)]">{formatDate(log.startedAt)}</td>
                 </tr>
               ))}
               {logs.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-[var(--color-text-secondary)]">
+                  <td colSpan={7} className="px-4 py-8 text-center text-[var(--color-text-secondary)]">
                     Імпортів ще не було
                   </td>
                 </tr>

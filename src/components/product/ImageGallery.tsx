@@ -66,13 +66,13 @@ export default function ImageGallery({ images, productName }: ImageGalleryProps)
                 src={currentImage.pathBlur}
                 alt=""
                 aria-hidden="true"
-                className="absolute inset-0 h-full w-full scale-110 object-contain p-4 blur-lg"
+                className="absolute inset-0 h-full w-full scale-110 object-contain blur-lg"
               />
             )}
             <img
               src={currentImage?.pathFull || currentImage?.pathMedium || ''}
               alt={currentImage?.altText || productName}
-              className={`h-full w-full object-contain p-4 transition-all duration-200 ${mainImageLoaded ? 'opacity-100' : 'opacity-0'}`}
+              className={`h-full w-full object-contain transition-all duration-200 ${mainImageLoaded ? 'opacity-100' : 'opacity-0'}`}
               style={zoomStyle}
               onLoad={() => setMainImageLoaded(true)}
             />
@@ -110,7 +110,7 @@ export default function ImageGallery({ images, productName }: ImageGalleryProps)
                   <img
                     src={img.pathFull || img.pathMedium || ''}
                     alt={img.altText || `${productName} ${i + 1}`}
-                    className="h-full w-full object-contain p-4"
+                    className="h-full w-full object-contain"
                     onClick={() => setLightboxOpen(true)}
                   />
                 </div>

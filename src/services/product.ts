@@ -2,6 +2,7 @@ import { Prisma } from '@/../generated/prisma';
 import { prisma } from '@/lib/prisma';
 import { createSlug } from '@/utils/slug';
 import type { ProductFilterInput } from '@/validators/product';
+import type { ProductListItem } from '@/types/product';
 import { cacheGet, cacheSet, cacheInvalidate, CACHE_TTL } from '@/services/cache';
 
 /**
@@ -17,39 +18,48 @@ async function fullTextSearchProductIds(
   additionalWhere?: string
 ): Promise<{ ids: number[]; total: number }> {
   const whereClause = additionalWhere ? `AND ${additionalWhere}` : '';
+  const likePattern = `%${query}%`;
 
-  const countResult = await prisma.$queryRaw<[{ count: bigint }]>`
+  const countSql = `
     SELECT COUNT(DISTINCT id)::bigint as count FROM (
       SELECT id FROM products
-      WHERE is_active = true ${Prisma.raw(whereClause)}
+      WHERE is_active = true ${whereClause}
         AND (
-          code ILIKE ${`%${query}%`}
-          OR search_vector @@ plainto_tsquery('simple', ${query})
-          OR similarity(name, ${query}) > 0.2
+          code ILIKE $1
+          OR search_vector @@ plainto_tsquery('simple', $2)
+          OR similarity(name, $3) > 0.2
         )
     ) sub
   `;
+
+  const countResult = await prisma.$queryRawUnsafe<[{ count: bigint }]>(
+    countSql, likePattern, query, query
+  );
 
   const total = Number(countResult[0]?.count ?? 0);
 
   if (total === 0) return { ids: [], total: 0 };
 
-  const results = await prisma.$queryRaw<{ id: number }[]>`
+  const rankSql = `
     SELECT id,
-      CASE WHEN code ILIKE ${`%${query}%`} THEN 100 ELSE 0 END
-      + COALESCE(ts_rank_cd(search_vector, plainto_tsquery('simple', ${query})) * 10, 0)
-      + COALESCE(similarity(name, ${query}) * 5, 0)
+      CASE WHEN code ILIKE $1 THEN 100 ELSE 0 END
+      + COALESCE(ts_rank_cd(search_vector, plainto_tsquery('simple', $2)) * 10, 0)
+      + COALESCE(similarity(name, $3) * 5, 0)
       AS rank
     FROM products
-    WHERE is_active = true ${Prisma.raw(whereClause)}
+    WHERE is_active = true ${whereClause}
       AND (
-        code ILIKE ${`%${query}%`}
-        OR search_vector @@ plainto_tsquery('simple', ${query})
-        OR similarity(name, ${query}) > 0.2
+        code ILIKE $4
+        OR search_vector @@ plainto_tsquery('simple', $5)
+        OR similarity(name, $6) > 0.2
       )
     ORDER BY rank DESC, orders_count DESC
-    LIMIT ${limit} OFFSET ${offset}
+    LIMIT $7 OFFSET $8
   `;
+
+  const results = await prisma.$queryRawUnsafe<{ id: number }[]>(
+    rankSql, likePattern, query, query, likePattern, query, query, limit, offset
+  );
 
   return { ids: results.map((r) => r.id), total };
 }
@@ -180,7 +190,7 @@ function buildSortOrder(sort: string): Prisma.ProductOrderByWithRelationInput[] 
  */
 export async function getProducts(filters: ProductFilterInput) {
   const cacheKey = `products:list:${JSON.stringify(filters)}`;
-  const cached = await cacheGet<{ products: unknown[]; total: number }>(cacheKey);
+  const cached = await cacheGet<{ products: ProductListItem[]; total: number }>(cacheKey);
   if (cached) return cached;
 
   const skip = (filters.page - 1) * filters.limit;

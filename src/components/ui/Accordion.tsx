@@ -3,7 +3,7 @@
 import { useState, useRef, type ReactNode } from 'react';
 
 interface AccordionItemProps {
-  title: string;
+  title: ReactNode;
   children: ReactNode;
   defaultOpen?: boolean;
 }

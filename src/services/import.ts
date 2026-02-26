@@ -87,10 +87,16 @@ const COLUMN_MAP: Record<string, string> = {
   'роздрібна ціна': 'priceRetail',
   'ціна роздрібна': 'priceRetail',
   'price_retail': 'priceRetail',
+  'ціна, грн': 'priceRetail',
+  'ціна грн': 'priceRetail',
+  'грн': 'priceRetail',
   'ціна опт': 'priceWholesale',
   'оптова ціна': 'priceWholesale',
   'ціна оптова': 'priceWholesale',
   'price_wholesale': 'priceWholesale',
+  'ціна, євро': 'priceWholesale',
+  'ціна євро': 'priceWholesale',
+  'євро': 'priceWholesale',
   'акція': 'isPromo',
   'promo': 'isPromo',
   'is_promo': 'isPromo',
@@ -129,25 +135,39 @@ function parsePromo(value: unknown): boolean {
   return ['так', 'yes', 'true', '1', 'да'].includes(str);
 }
 
-function parseRows(buffer: Buffer): { rows: Record<string, unknown>[]; columnMapping: Record<string, string> } {
+export type ImportFormat = 'standard' | 'supplier';
+
+interface ParseResult {
+  rows: Record<string, unknown>[];
+  columnMapping: Record<string, string>;
+  format: ImportFormat;
+}
+
+function generateAutoCode(name: string): string {
+  const slug = createSlug(name);
+  return slug.substring(0, 50);
+}
+
+function parseWorkbook(buffer: Buffer) {
   const workbook = XLSX.read(buffer, { type: 'buffer' });
   const sheetName = workbook.SheetNames[0];
   if (!sheetName) {
-    throw new ImportError('Excel-файл не містить жодного аркуша', 400);
+    throw new ImportError('Файл не містить даних', 400);
   }
-
   const sheet = workbook.Sheets[sheetName];
   const rawRows: ExcelRow[] = XLSX.utils.sheet_to_json(sheet, { defval: '' });
 
   if (rawRows.length === 0) {
-    throw new ImportError('Excel-файл порожній', 400);
+    throw new ImportError('Файл порожній', 400);
   }
-
   if (rawRows.length > 10000) {
     throw new ImportError('Максимальна кількість рядків: 10 000', 400);
   }
 
-  // Build column mapping from header row
+  return { rawRows, sheet };
+}
+
+function buildColumnMapping(rawRows: ExcelRow[]): { columnMapping: Record<string, string>; mappedKeys: string[] } {
   const headers = Object.keys(rawRows[0]);
   const columnMapping: Record<string, string> = {};
 
@@ -158,19 +178,34 @@ function parseRows(buffer: Buffer): { rows: Record<string, unknown>[]; columnMap
     }
   }
 
-  // Validate required columns exist
-  const mappedKeys = Object.values(columnMapping);
-  if (!mappedKeys.includes('code')) {
+  return { columnMapping, mappedKeys: Object.values(columnMapping) };
+}
+
+function parseRows(buffer: Buffer): ParseResult {
+  const { rawRows } = parseWorkbook(buffer);
+  const { columnMapping, mappedKeys } = buildColumnMapping(rawRows);
+
+  const hasCode = mappedKeys.includes('code');
+  const hasName = mappedKeys.includes('name');
+  const hasPrice = mappedKeys.includes('priceRetail') || mappedKeys.includes('priceWholesale');
+
+  // Supplier format: no code column, has name and at least one price column
+  if (!hasCode && hasName && hasPrice) {
+    return parseSupplierFormat(rawRows, columnMapping);
+  }
+
+  // Standard format: validate required columns
+  if (!hasCode) {
     throw new ImportError('Не знайдено колонку "Код продукції"', 400);
   }
-  if (!mappedKeys.includes('name')) {
+  if (!hasName) {
     throw new ImportError('Не знайдено колонку "Назва"', 400);
   }
   if (!mappedKeys.includes('priceRetail')) {
     throw new ImportError('Не знайдено колонку "Ціна роздріб"', 400);
   }
 
-  // Normalize rows
+  // Normalize rows for standard format
   const rows = rawRows.map((raw) => {
     const normalized: Record<string, unknown> = {};
     for (const [header, key] of Object.entries(columnMapping)) {
@@ -179,7 +214,71 @@ function parseRows(buffer: Buffer): { rows: Record<string, unknown>[]; columnMap
     return normalized;
   });
 
-  return { rows, columnMapping };
+  return { rows, columnMapping, format: 'standard' };
+}
+
+function parseSupplierFormat(
+  rawRows: ExcelRow[],
+  columnMapping: Record<string, string>
+): ParseResult {
+  const rows: Record<string, unknown>[] = [];
+  let currentCategory = '';
+
+  for (const raw of rawRows) {
+    const normalized: Record<string, unknown> = {};
+    for (const [header, key] of Object.entries(columnMapping)) {
+      normalized[key] = raw[header];
+    }
+
+    const name = String(normalized.name ?? '').trim();
+    if (!name) continue;
+
+    // Check if any price column has a value
+    const retailPrice = parsePrice(normalized.priceRetail);
+    const wholesalePrice = parsePrice(normalized.priceWholesale);
+    const hasAnyPrice = retailPrice !== null || wholesalePrice !== null;
+
+    if (!hasAnyPrice) {
+      // Row without prices = category separator
+      currentCategory = name;
+      continue;
+    }
+
+    // Product row: generate code from name and assign current category
+    normalized.code = generateAutoCode(name);
+    if (currentCategory && !normalized.category) {
+      normalized.category = currentCategory;
+    }
+
+    rows.push(normalized);
+  }
+
+  return { rows, columnMapping, format: 'supplier' };
+}
+
+/**
+ * Parse Excel file and return raw preview data (headers + first rows).
+ */
+export function parsePreview(buffer: Buffer): {
+  headers: string[];
+  rows: string[][];
+  totalRows: number;
+  format: ImportFormat;
+} {
+  const { rawRows } = parseWorkbook(buffer);
+  const { columnMapping, mappedKeys } = buildColumnMapping(rawRows);
+
+  const hasCode = mappedKeys.includes('code');
+  const hasName = mappedKeys.includes('name');
+  const hasPrice = mappedKeys.includes('priceRetail') || mappedKeys.includes('priceWholesale');
+  const format: ImportFormat = (!hasCode && hasName && hasPrice) ? 'supplier' : 'standard';
+
+  const headers = Object.keys(rawRows[0]);
+  const rows = rawRows.slice(0, 10).map((raw) =>
+    headers.map((h) => String(raw[h] ?? ''))
+  );
+
+  return { headers, rows, totalRows: rawRows.length, format };
 }
 
 /**
@@ -215,7 +314,8 @@ export async function importProducts(
   let imagesFailed = 0;
 
   try {
-    const { rows } = parseRows(fileBuffer);
+    const { rows, format } = parseRows(fileBuffer);
+    const isSupplierFormat = format === 'supplier';
 
     // Cache existing categories
     const existingCategories = await prisma.category.findMany({
@@ -249,16 +349,25 @@ export async function importProducts(
           continue;
         }
 
-        // Validate retail price
+        // Validate prices — in supplier format, at least one price is enough
         const priceRetail = parsePrice(row.priceRetail);
-        if (priceRetail === null) {
-          errors.push({ row: rowNum, field: 'priceRetail', message: 'Невірна роздрібна ціна', value: row.priceRetail });
-          skipped++;
-          continue;
+        const priceWholesale = parsePrice(row.priceWholesale);
+
+        if (isSupplierFormat) {
+          if (priceRetail === null && priceWholesale === null) {
+            errors.push({ row: rowNum, field: 'price', message: 'Немає жодної ціни', value: row.priceRetail });
+            skipped++;
+            continue;
+          }
+        } else {
+          if (priceRetail === null) {
+            errors.push({ row: rowNum, field: 'priceRetail', message: 'Невірна роздрібна ціна', value: row.priceRetail });
+            skipped++;
+            continue;
+          }
         }
 
         // Optional fields
-        const priceWholesale = parsePrice(row.priceWholesale);
         const quantity = parseQuantity(row.quantity);
         const isPromo = parsePromo(row.isPromo);
 
@@ -285,8 +394,13 @@ export async function importProducts(
           }
         }
 
-        // Check if product exists
-        const existingProduct = await prisma.product.findUnique({ where: { code } });
+        // Check if product exists — in supplier format, also try matching by name
+        let existingProduct = await prisma.product.findUnique({ where: { code } });
+        if (!existingProduct && isSupplierFormat) {
+          existingProduct = await prisma.product.findFirst({
+            where: { name: { equals: name, mode: 'insensitive' } },
+          });
+        }
 
         if (existingProduct) {
           // Update existing product
@@ -302,22 +416,24 @@ export async function importProducts(
           }
 
           // Track price changes
-          if (Number(existingProduct.priceRetail) !== priceRetail) {
-            updateData.priceRetailOld = existingProduct.priceRetail;
-            updateData.priceRetail = priceRetail;
+          if (priceRetail !== null) {
+            if (Number(existingProduct.priceRetail) !== priceRetail) {
+              updateData.priceRetailOld = existingProduct.priceRetail;
+              updateData.priceRetail = priceRetail;
 
-            await prisma.priceHistory.create({
-              data: {
-                productId: existingProduct.id,
-                priceRetailOld: existingProduct.priceRetail,
-                priceRetailNew: priceRetail,
-                priceWholesaleOld: existingProduct.priceWholesale,
-                priceWholesaleNew: priceWholesale ?? existingProduct.priceWholesale,
-                importId: importLog.id,
-              },
-            });
-          } else {
-            updateData.priceRetail = priceRetail;
+              await prisma.priceHistory.create({
+                data: {
+                  productId: existingProduct.id,
+                  priceRetailOld: existingProduct.priceRetail,
+                  priceRetailNew: priceRetail,
+                  priceWholesaleOld: existingProduct.priceWholesale,
+                  priceWholesaleNew: priceWholesale ?? existingProduct.priceWholesale,
+                  importId: importLog.id,
+                },
+              });
+            } else {
+              updateData.priceRetail = priceRetail;
+            }
           }
 
           if (priceWholesale !== null) {
@@ -365,7 +481,7 @@ export async function importProducts(
               name,
               slug: finalSlug,
               categoryId,
-              priceRetail,
+              priceRetail: priceRetail ?? 0,
               priceWholesale,
               quantity,
               isPromo,
@@ -440,7 +556,7 @@ export async function importProducts(
     });
 
     if (error instanceof ImportError) throw error;
-    throw new ImportError('Помилка при обробці Excel-файлу', 500);
+    throw new ImportError('Помилка при обробці файлу', 500);
   }
 }
 

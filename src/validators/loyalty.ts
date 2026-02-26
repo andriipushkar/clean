@@ -14,7 +14,7 @@ export const updateLoyaltyLevelSchema = z.object({
   minSpent: z.number().min(0),
   pointsMultiplier: z.number().min(0).default(1),
   discountPercent: z.number().min(0).max(100).default(0),
-  benefits: z.record(z.unknown()).nullable().optional(),
+  benefits: z.record(z.string(), z.unknown()).nullable().optional(),
   sortOrder: z.number().int().default(0),
 });
 

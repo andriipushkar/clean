@@ -1,3 +1,4 @@
+import { Prisma } from '@/../generated/prisma';
 import { prisma } from '@/lib/prisma';
 import { env } from '@/config/env';
 import type { PaymentProvider, PaymentInitResult, PaymentCallbackResult } from '@/types/payment';
@@ -96,7 +97,7 @@ export async function handlePaymentCallback(
         amount: 0,
         paymentProvider: provider,
         transactionId,
-        callbackData: rawData,
+        callbackData: rawData as unknown as Prisma.InputJsonValue,
         paidAt: status === 'success' ? new Date() : null,
       },
     });
@@ -106,7 +107,7 @@ export async function handlePaymentCallback(
       data: {
         paymentStatus: status === 'success' ? 'paid' : status === 'failure' ? 'pending' : 'pending',
         transactionId,
-        callbackData: rawData,
+        callbackData: rawData as unknown as Prisma.InputJsonValue,
         paidAt: status === 'success' ? new Date() : payment.paidAt,
       },
     });

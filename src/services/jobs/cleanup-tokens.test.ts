@@ -10,8 +10,9 @@ vi.mock('@/lib/prisma', () => ({
 
 import { prisma } from '@/lib/prisma';
 import { cleanupExpiredTokens } from './cleanup-tokens';
+import type { MockPrismaClient } from '@/test/prisma-mock';
 
-const mockPrisma = vi.mocked(prisma);
+const mockPrisma = prisma as unknown as MockPrismaClient;
 
 beforeEach(() => {
   vi.clearAllMocks();

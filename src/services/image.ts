@@ -81,8 +81,8 @@ export async function processProductImage(
 
       let pipeline = sharp(fileBuffer)
         .resize(size.width, size.height, {
-          fit: 'contain',
-          background: { r: 255, g: 255, b: 255, alpha: 1 },
+          fit: 'inside',
+          withoutEnlargement: true,
         })
         .webp({ quality: key === 'blur' ? 20 : 80 });
 
@@ -169,7 +169,12 @@ export async function deleteProductImage(imageId: number) {
 
   for (const p of paths) {
     try {
-      await fs.unlink(path.join(uploadDir, '..', p!));
+      const resolvedPath = path.resolve(uploadDir, '..', p!);
+      const parentDir = path.resolve(uploadDir, '..');
+      if (!resolvedPath.startsWith(parentDir + path.sep)) {
+        continue; // Skip paths outside upload directory
+      }
+      await fs.unlink(resolvedPath);
     } catch {
       // File might not exist, ignore
     }

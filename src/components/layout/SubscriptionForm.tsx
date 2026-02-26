@@ -63,7 +63,7 @@ export default function SubscriptionForm() {
         onChange={(e) => setEmail(e.target.value)}
         placeholder="Ваш email"
         required
-        className="flex-1 rounded-[var(--radius)] border border-white/20 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-green-300 focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/30"
+        className="flex-1 rounded-[var(--radius)] border border-white/20 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-blue-300 focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/30"
       />
       <button
         type="submit"

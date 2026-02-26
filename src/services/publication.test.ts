@@ -30,8 +30,9 @@ vi.mock('@/services/instagram', () => ({
 }));
 
 import { prisma } from '@/lib/prisma';
+import type { MockPrismaClient } from '@/test/prisma-mock';
 
-const mockPrisma = vi.mocked(prisma);
+const mockPrisma = prisma as unknown as MockPrismaClient;
 const mockFetch = vi.fn();
 
 beforeEach(() => {

@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { withRole } from '@/middleware/auth';
 import { processProductImage, ImageError } from '@/services/image';
 import { successResponse, errorResponse } from '@/utils/api-response';
+import { cacheInvalidate } from '@/services/cache';
 
 export const POST = withRole('manager', 'admin')(
   async (request: NextRequest, { params }) => {
@@ -26,6 +27,7 @@ export const POST = withRole('manager', 'admin')(
         isMain
       );
 
+      await cacheInvalidate('products:*');
       return successResponse(image, 201);
     } catch (error) {
       if (error instanceof ImageError) {

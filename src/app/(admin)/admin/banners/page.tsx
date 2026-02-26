@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { apiClient } from '@/lib/api-client';
+import { apiClient, getAccessToken } from '@/lib/api-client';
 import Spinner from '@/components/ui/Spinner';
 import Button from '@/components/ui/Button';
 import { Trash, Check, Close } from '@/components/icons';
@@ -78,9 +78,15 @@ export default function AdminBannersPage() {
     const formData = new FormData();
     formData.append('image', file);
     try {
+      const headers: Record<string, string> = { 'X-Requested-With': 'XMLHttpRequest' };
+      const token = getAccessToken();
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       const res = await fetch(`/api/v1/admin/banners/${bannerId}/upload`, {
         method: 'POST',
         body: formData,
+        credentials: 'include',
+        headers,
       });
       if (res.ok) loadBanners();
     } finally {

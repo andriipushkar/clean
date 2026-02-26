@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/api-client';
 import Input from '@/components/ui/Input';
@@ -101,7 +100,7 @@ export default function AdminProductsPage() {
                       <div className="flex items-center gap-3">
                         <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded bg-[var(--color-bg-secondary)]">
                           {p.imagePath ? (
-                            <Image src={p.imagePath} alt="" fill className="object-cover" sizes="40px" />
+                            <img src={p.imagePath} alt="" className="h-full w-full object-contain" />
                           ) : (
                             <div className="flex h-full items-center justify-center text-[8px] text-[var(--color-text-secondary)]">—</div>
                           )}

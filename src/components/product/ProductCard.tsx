@@ -114,13 +114,13 @@ export default function ProductCard({ product, noteText }: ProductCardProps) {
                 src={blurImage}
                 alt=""
                 aria-hidden="true"
-                className="absolute inset-0 h-full w-full scale-110 object-contain p-4 blur-lg"
+                className="absolute inset-0 h-full w-full scale-110 object-contain blur-lg"
               />
             )}
             <img
               src={mainImage}
               alt={product.name}
-              className={`h-full w-full object-contain p-4 transition-all duration-300 group-hover:scale-105 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
+              className={`h-full w-full object-contain transition-all duration-300 group-hover:scale-105 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
               loading="lazy"
               onLoad={() => setImageLoaded(true)}
             />

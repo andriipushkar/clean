@@ -25,6 +25,10 @@ export default function AdminCategoriesPage() {
   const [mergeSource, setMergeSource] = useState<number | null>(null);
   const [mergeTarget, setMergeTarget] = useState<string>('');
   const [isMerging, setIsMerging] = useState(false);
+  const [showCreate, setShowCreate] = useState(false);
+  const [createForm, setCreateForm] = useState({ name: '', slug: '', parentId: '' });
+  const [isCreating, setIsCreating] = useState(false);
+  const [isDeleting, setIsDeleting] = useState<number | null>(null);
 
   const loadCategories = useCallback(() => {
     setIsLoading(true);
@@ -93,6 +97,37 @@ export default function AdminCategoriesPage() {
     }
   };
 
+  const handleCreate = async () => {
+    if (!createForm.name.trim()) return;
+    setIsCreating(true);
+    try {
+      const slug = createForm.slug.trim() || createForm.name.trim().toLowerCase().replace(/[^a-zа-яіїєґ0-9]+/gi, '-').replace(/-+$/, '');
+      const payload: Record<string, unknown> = { name: createForm.name.trim(), slug };
+      if (createForm.parentId) payload.parentId = Number(createForm.parentId);
+      const res = await apiClient.post('/api/v1/admin/categories', payload);
+      if (res.success) {
+        setShowCreate(false);
+        setCreateForm({ name: '', slug: '', parentId: '' });
+        loadCategories();
+      }
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  const handleDelete = async (catId: number) => {
+    const cat = categories.find((c) => c.id === catId);
+    if (!cat) return;
+    if (!confirm(`Видалити категорію "${cat.name}"? Товари залишаться без категорії.`)) return;
+    setIsDeleting(catId);
+    try {
+      const res = await apiClient.delete(`/api/v1/admin/categories/${catId}`);
+      if (res.success) loadCategories();
+    } finally {
+      setIsDeleting(null);
+    }
+  };
+
   const handleToggle = async (cat: AdminCategory) => {
     await apiClient.put(`/api/v1/admin/categories/${cat.id}`, { isActive: !cat.isActive });
     loadCategories();
@@ -104,7 +139,33 @@ export default function AdminCategoriesPage() {
 
   return (
     <div>
-      <h2 className="mb-4 text-xl font-bold">Категорії</h2>
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="text-xl font-bold">Категорії</h2>
+        <Button onClick={() => setShowCreate(!showCreate)}>
+          {showCreate ? 'Скасувати' : '+ Створити категорію'}
+        </Button>
+      </div>
+
+      {showCreate && (
+        <div className="mb-4 rounded-[var(--radius)] border border-[var(--color-border)] bg-[var(--color-bg)] p-4">
+          <p className="mb-3 text-sm font-semibold">Нова категорія</p>
+          <div className="flex flex-wrap gap-3">
+            <Input value={createForm.name} onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })} placeholder="Назва категорії" className="w-56" />
+            <Input value={createForm.slug} onChange={(e) => setCreateForm({ ...createForm, slug: e.target.value })} placeholder="Slug (автоматично)" className="w-44" />
+            <select
+              value={createForm.parentId}
+              onChange={(e) => setCreateForm({ ...createForm, parentId: e.target.value })}
+              className="rounded-[var(--radius)] border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-1.5 text-sm"
+            >
+              <option value="">Без батьківської</option>
+              {rootCategories.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+            <Button onClick={handleCreate} isLoading={isCreating}>Створити</Button>
+          </div>
+        </div>
+      )}
 
       {/* Merge panel */}
       {mergeSource && (
@@ -146,6 +207,8 @@ export default function AdminCategoriesPage() {
               onReorder={handleReorder}
               onToggle={() => handleToggle(cat)}
               onMerge={() => setMergeSource(cat.id)}
+              onDelete={() => handleDelete(cat.id)}
+              isDeleting={isDeleting === cat.id}
               isFirst={i === 0}
             />
             {childrenOf(cat.id).map((child, ci) => (
@@ -164,6 +227,8 @@ export default function AdminCategoriesPage() {
                 onReorder={handleReorder}
                 onToggle={() => handleToggle(child)}
                 onMerge={() => setMergeSource(child.id)}
+                onDelete={() => handleDelete(child.id)}
+                isDeleting={isDeleting === child.id}
                 isChild
                 isFirst={false}
               />
@@ -192,6 +257,8 @@ function CategoryRow({
   onReorder,
   onToggle,
   onMerge,
+  onDelete,
+  isDeleting,
   isChild,
   isFirst,
 }: {
@@ -208,6 +275,8 @@ function CategoryRow({
   onReorder: (id: number, direction: 'up' | 'down') => void;
   onToggle: () => void;
   onMerge: () => void;
+  onDelete: () => void;
+  isDeleting: boolean;
   isChild?: boolean;
   isFirst: boolean;
 }) {
@@ -258,6 +327,9 @@ function CategoryRow({
         </button>
         <button onClick={onEdit} className="text-xs text-[var(--color-primary)] hover:underline">Редагувати</button>
         <button onClick={onMerge} className="text-xs text-[var(--color-text-secondary)] hover:underline">Об&apos;єднати</button>
+        <button onClick={onDelete} disabled={isDeleting} className="text-xs text-[var(--color-danger)] hover:underline disabled:opacity-50">
+          {isDeleting ? '...' : 'Видалити'}
+        </button>
       </div>
     </div>
   );

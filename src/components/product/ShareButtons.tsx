@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Copy, Facebook, Telegram, Viber, Instagram, Check } from '@/components/icons';
 
 interface ShareButtonsProps {
@@ -11,7 +11,12 @@ interface ShareButtonsProps {
 export default function ShareButtons({ url, title }: ShareButtonsProps) {
   const [copied, setCopied] = useState(false);
   const [igCopied, setIgCopied] = useState(false);
-  const fullUrl = typeof window !== 'undefined' ? `${window.location.origin}${url}` : url;
+  const [fullUrl, setFullUrl] = useState(url);
+
+  useEffect(() => {
+    setFullUrl(`${window.location.origin}${url}`);
+  }, [url]);
+
   const encodedUrl = encodeURIComponent(fullUrl);
   const encodedTitle = encodeURIComponent(title);
 

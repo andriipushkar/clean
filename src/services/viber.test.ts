@@ -29,8 +29,9 @@ vi.mock('@/lib/redis', () => ({
 
 import { prisma } from '@/lib/prisma';
 import { redis } from '@/lib/redis';
+import type { MockPrismaClient } from '@/test/prisma-mock';
 
-const mockPrisma = vi.mocked(prisma);
+const mockPrisma = prisma as unknown as MockPrismaClient;
 const mockRedis = vi.mocked(redis);
 
 import { verifyViberSignature, handleViberEvent } from './viber';

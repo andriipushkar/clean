@@ -2,17 +2,17 @@
 
 /* Тема за замовчуванням: «Modern Ecommerce» */
 @theme {
-  --color-primary: #4CAF50;
-  --color-primary-light: #66BB6A;
-  --color-primary-dark: #388E3C;
-  --color-primary-50: #E8F5E9;
-  --color-primary-100: #C8E6C9;
+  --color-primary: #1E88E5;
+  --color-primary-light: #42A5F5;
+  --color-primary-dark: #1565C0;
+  --color-primary-50: #E3F2FD;
+  --color-primary-100: #BBDEFB;
   --color-secondary: #FFC107;
   --color-accent: #FF9800;
   --color-danger: #F44336;
   --color-warning: #FF9800;
   --color-success: #4CAF50;
-  --color-info: #2196F3;
+  --color-info: #1E88E5;
 
   --color-bg: #ffffff;
   --color-bg-secondary: #F5F5F5;
@@ -24,7 +24,7 @@
   --color-discount: #F44336;
   --color-in-stock: #4CAF50;
   --color-out-of-stock: #9E9E9E;
-  --color-cta: #4CAF50;
+  --color-cta: #1E88E5;
 
   --radius: 0.375rem;
   --shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
@@ -34,7 +34,7 @@
 
   --transition-base: 150ms cubic-bezier(0.4, 0, 0.2, 1);
 
-  --color-gradient-primary: linear-gradient(135deg, #4CAF50, #1B5E20);
+  --color-gradient-primary: linear-gradient(135deg, #1E88E5, #0D47A1);
 }
 
 @layer base {
@@ -81,13 +81,13 @@
 
 @keyframes pulse-ring {
   0% {
-    box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.4);
+    box-shadow: 0 0 0 0 rgba(30, 136, 229, 0.4);
   }
   70% {
-    box-shadow: 0 0 0 12px rgba(76, 175, 80, 0);
+    box-shadow: 0 0 0 12px rgba(30, 136, 229, 0);
   }
   100% {
-    box-shadow: 0 0 0 0 rgba(76, 175, 80, 0);
+    box-shadow: 0 0 0 0 rgba(30, 136, 229, 0);
   }
 }
 

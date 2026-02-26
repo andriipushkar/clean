@@ -25,9 +25,13 @@ vi.mock('@/utils/slug', () => ({
 
 import { prisma } from '@/lib/prisma';
 import * as XLSX from 'xlsx';
+import type { MockPrismaClient } from '@/test/prisma-mock';
 
-const mockPrisma = vi.mocked(prisma);
-const mockXLSX = vi.mocked(XLSX);
+const mockPrisma = prisma as unknown as MockPrismaClient;
+const mockXLSX = XLSX as unknown as {
+  read: ReturnType<typeof vi.fn>;
+  utils: { sheet_to_json: ReturnType<typeof vi.fn> };
+};
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -122,7 +126,7 @@ describe('importProducts', () => {
 
     await expect(importProducts(fileBuffer, filename, managerId)).rejects.toThrow(ImportError);
     await expect(importProducts(fileBuffer, filename, managerId)).rejects.toThrow(
-      'Excel-файл не містить жодного аркуша'
+      'Файл не містить даних'
     );
   });
 
@@ -132,20 +136,24 @@ describe('importProducts', () => {
 
     await expect(importProducts(fileBuffer, filename, managerId)).rejects.toThrow(ImportError);
     await expect(importProducts(fileBuffer, filename, managerId)).rejects.toThrow(
-      'Excel-файл порожній'
+      'Файл порожній'
     );
   });
 
-  it('should throw ImportError when missing required column "code"', async () => {
+  it('should use supplier format when missing code column but has name and price', async () => {
     mockXLSX.read.mockReturnValue({ SheetNames: ['Sheet1'], Sheets: { Sheet1: {} } } as never);
     mockXLSX.utils.sheet_to_json.mockReturnValue([
       { 'Назва': 'Товар 1', 'Ціна роздріб': '100' },
     ] as never);
 
-    await expect(importProducts(fileBuffer, filename, managerId)).rejects.toThrow(ImportError);
-    await expect(importProducts(fileBuffer, filename, managerId)).rejects.toThrow(
-      'Не знайдено колонку "Код продукції"'
-    );
+    mockPrisma.product.findUnique.mockResolvedValue(null);
+    mockPrisma.product.findFirst.mockResolvedValue(null);
+    mockPrisma.product.create.mockResolvedValue({ id: 1, code: 'tovar-1', name: 'Товар 1' } as never);
+
+    const result = await importProducts(fileBuffer, filename, managerId);
+
+    expect(result.created).toBe(1);
+    expect(result.totalRows).toBe(1);
   });
 
   it('should create product successfully', async () => {

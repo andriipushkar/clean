@@ -71,7 +71,6 @@ async function main() {
       isVerified: true,
       wholesaleStatus: 'approved',
       companyName: 'ТОВ "Чистий Дім"',
-      companyCode: '12345678',
     },
   });
   console.log(`  Wholesaler: ${wholesaler.email}`);
@@ -462,6 +461,7 @@ async function main() {
         productName: products[productIdx].name,
         quantity: qty,
         priceAtOrder: price,
+        subtotal: price * qty,
       });
     }
 
